@@ -29,6 +29,12 @@ button.primary { border: 0; background: #2563eb; color: #fff; border-radius: 8px
 button.primary:hover { background: #1d4ed8; }
 button:disabled { opacity: .55; cursor: not-allowed; }
 
+.auth-canvas { min-height: calc(100vh - 60px); display: flex; align-items: center; justify-content: center;
+  padding: 40px 20px; background-color: #f3f5f9;
+  background-image: radial-gradient(#c9d2e0 1px, transparent 1px); background-size: 18px 18px; }
+.auth-canvas .auth-card { width: min(440px, 94vw); margin: 0; box-shadow: 0 14px 34px rgba(20, 32, 57, .12); border: 1px solid #e6eaf2; }
+.auth-canvas .auth-card h1 { font-size: 20px; margin-bottom: 16px; }
+.auth-canvas .auth-card button { width: 100%; margin-top: 6px; }
 .tool-layout { display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 18px; padding: 18px 20px 40px;
   max-width: 1720px; margin: 0 auto; align-items: start; }
 .form-group { background: #fff; border: 1px solid #e6eaf2; border-radius: 12px; padding: 14px 16px 6px; margin-bottom: 14px; }
@@ -54,7 +60,13 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .canvas-toolbar-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .preview-canvas { border-radius: 12px; }
 .under-panels { padding: 0 20px 40px; max-width: 1720px; margin: 0 auto; display: grid; gap: 16px; }
-@media (max-width: 980px) { .tool-layout { grid-template-columns: 1fr; } }
+@media (max-width: 980px) { .auth-canvas { min-height: calc(100vh - 60px); display: flex; align-items: center; justify-content: center;
+  padding: 40px 20px; background-color: #f3f5f9;
+  background-image: radial-gradient(#c9d2e0 1px, transparent 1px); background-size: 18px 18px; }
+.auth-canvas .auth-card { width: min(440px, 94vw); margin: 0; box-shadow: 0 14px 34px rgba(20, 32, 57, .12); border: 1px solid #e6eaf2; }
+.auth-canvas .auth-card h1 { font-size: 20px; margin-bottom: 16px; }
+.auth-canvas .auth-card button { width: 100%; margin-top: 6px; }
+.tool-layout { grid-template-columns: 1fr; } }
 .page-heading { margin-bottom: 28px; }
 .eyebrow { color: #345edb; font-size: 13px; font-weight: 650; margin: 0 0 8px; }
 h1 { font-size: clamp(24px, 3vw, 32px); letter-spacing: -0.5px; margin: 0 0 12px; }

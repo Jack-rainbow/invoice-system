@@ -14,6 +14,19 @@ const messages: Record<string, string> = {
 };
 
 type ManagedUser = Omit<CreateUserResponse, 'setup_link'>;
+
+// Auth screens share the replicated chrome: the tool topbar over a dotted
+// canvas with one centered card, so login matches the editor's look.
+function AuthShell({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <>
+    <header className="tool-topbar">
+      <span className="tool-logo" aria-hidden="true">F</span>
+      <div className="tool-title"><strong>单据模板生成器</strong><small>CFDI 版式 · 实时预览</small></div>
+      <span className="spacer" />
+    </header>
+    <div className="auth-canvas">{children}</div>
+  </>;
+}
 export function AdminWorkspace() {
   const [setupToken, setSetupToken] = useState(() => location.pathname === '/setup' ? new URLSearchParams(location.hash.slice(1)).get('token') ?? '' : '');
   const [bootstrapToken, setBootstrapToken] = useState(() => location.pathname === '/setup/admin' ? new URLSearchParams(location.hash.slice(1)).get('token') ?? '' : '');
@@ -46,9 +59,9 @@ export function AdminWorkspace() {
     try { await action(); } catch (failure) { setError((failure instanceof RequestError || failure instanceof DeviceKeyStorageError) ? messages[failure.code] ?? '服务暂时不可用，请保留当前操作并稍后重试。' : '请求未完成，请使用原操作重试。'); }
     finally { busyRef.current = false; setBusy(false); }
   }
-  if (checking) return <section className="card auth-card" role="status">正在核对登录状态…</section>;
-  if (!me && setupToken) return <section className="card auth-card"><h1>激活客户设备</h1><p>此浏览器将保存不可导出的设备密钥，请使用日后登录的浏览器。</p>{error && <p className="field-error" role="alert">{error}</p>}<form onSubmit={e => {e.preventDefault();void act(async () => {await initialDeviceSetup(setupToken,password);setPassword('');await loadMe();});}}><label>设置客户密码<input type="password" autoComplete="new-password" required value={password} onChange={e => setPassword(e.target.value)} /></label><p className="muted">12–128 个字符。浏览器无法保存密钥时会停止激活。</p><button disabled={busy}>设置密码并授权此浏览器</button></form></section>;
-  if (!me) return <section className="card auth-card">
+  if (checking) return <AuthShell><section className="card auth-card" role="status">正在核对登录状态…</section></AuthShell>;
+  if (!me && setupToken) return <AuthShell><section className="card auth-card"><h1>激活客户设备</h1><p>此浏览器将保存不可导出的设备密钥，请使用日后登录的浏览器。</p>{error && <p className="field-error" role="alert">{error}</p>}<form onSubmit={e => {e.preventDefault();void act(async () => {await initialDeviceSetup(setupToken,password);setPassword('');await loadMe();});}}><label>设置客户密码<input type="password" autoComplete="new-password" required value={password} onChange={e => setPassword(e.target.value)} /></label><p className="muted">12–128 个字符。浏览器无法保存密钥时会停止激活。</p><button disabled={busy}>设置密码并授权此浏览器</button></form></section></AuthShell>;
+  if (!me) return <AuthShell><section className="card auth-card">
     <h1>{bootstrapToken ? '启用超级管理员' : '登录单据工作台'}</h1>
     {error && <p className="field-error" role="alert">{error}</p>}
     {bootstrapToken ? <form onSubmit={e => { e.preventDefault(); void act(async () => {
@@ -68,9 +81,9 @@ export function AdminWorkspace() {
     }); }}>
       <label>用户名<input autoComplete="username" required value={name} onChange={e => setName(e.target.value)} /></label>
       <label>登录密码<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></label>
-      <button disabled={busy}>登录</button>
+      <button className="primary" disabled={busy}>登录</button>
     </form>}
-  </section>;
+  </section></AuthShell>;
   if (me.user.role === 'USER') return <>
     <header className="tool-topbar">
       <span className="tool-logo" aria-hidden="true">F</span>
