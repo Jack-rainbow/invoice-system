@@ -89,6 +89,7 @@ try {
   // 2FA removed: the password alone enables the administrator.
   await admin.getByRole('button', { name: '设置密码并启用', exact: true }).click();
   await admin.getByTestId('signed-in-user').waitFor();
+  await admin.getByRole('button', { name: '客户管理', exact: true }).click();
   await admin.getByLabel('客户用户名', { exact: true }).fill(f.customer); await admin.getByLabel('核验渠道引用', { exact: true }).fill('private-device-flow'); await admin.getByLabel('开户原因', { exact: true }).fill('device browser verification');
   await admin.getByRole('button', { name: '新增客户', exact: true }).click(); await admin.getByTestId('setup-link').waitFor();
   const setupLink = await admin.getByTestId('setup-link').innerText(); secrets.push(setupLink);
