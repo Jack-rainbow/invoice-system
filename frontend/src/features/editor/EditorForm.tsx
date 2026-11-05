@@ -40,9 +40,14 @@ export type PreviewResult = Readonly<{ image: Blob; manifestId: string; revision
 // inside the free-preview budget instead of one render per keystroke.
 const livePreviewDebounce = 1500;
 
-function emptyFields(): DraftFields {
-  return { recipient_name: '', product_code: '', quantity: '1', unit_code: '', unit_description: '',
-    description: '', issued_at: new Date().toISOString(), certification_display_at: null, unit_price: '' };
+function defaultFields(): DraftFields {
+  // Entry state mirrors the reference tool: the page opens on a complete,
+  // renderable sample so the ticket is visible immediately; every value stays
+  // fully editable and the first edit simply becomes the next revision.
+  return { recipient_name: 'USLAURENHANNAGROUPPLLC', product_code: '53131620', quantity: '5',
+    unit_code: 'DPC', unit_description: 'Docenas de piezas',
+    description: 'Xerjoff Erba Gold Edp 100 ml', issued_at: new Date().toISOString(),
+    certification_display_at: null, unit_price: '86.21' };
 }
 
 // The replicated editor: a grouped form column (收款方 / 商品明细 + extra
@@ -51,7 +56,7 @@ function emptyFields(): DraftFields {
 // confirmed preview of exactly the fields on screen.
 export function EditorForm({ initialFields, requestWatermarkedPreview, fieldBoxes, previewErrorText, onSaveDraft, onConfirmGeneration, onExport, onReset, extraFormSections, generationPending = false, savedRevision, savePending = false, generationCost = '1' }: Props) {
   const prefix = useId();
-  const [fields, setFields] = useState<DraftFields>(() => ({ ...(initialFields ?? emptyFields()) }));
+  const [fields, setFields] = useState<DraftFields>(() => ({ ...(initialFields ?? defaultFields()) }));
   const [previewURL, setPreviewURL] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [previewError, setPreviewError] = useState('');
@@ -132,13 +137,15 @@ export function EditorForm({ initialFields, requestWatermarkedPreview, fieldBoxe
     }
   }
 
-  // Live preview: debounce the latest fields into one saved revision + render.
+  // Live preview: render on entry (short delay) and again after every debounced
+  // edit, so the ticket is on screen the moment the page opens.
   const firstRender = useRef(true);
   useEffect(() => {
-    if (firstRender.current) { firstRender.current = false; return; }
     if (!requestWatermarkedPreview || !formValid) return;
+    const initial = firstRender.current;
+    firstRender.current = false;
     setLiveUpdating(true);
-    const timer = setTimeout(() => void preview(false), livePreviewDebounce);
+    const timer = setTimeout(() => void preview(false), initial ? 600 : livePreviewDebounce);
     return () => { clearTimeout(timer); setLiveUpdating(false); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fieldsKey, formValid]);
