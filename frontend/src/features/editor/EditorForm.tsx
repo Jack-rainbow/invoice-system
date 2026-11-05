@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { DraftFields, FieldBoxMap } from '../../shared/api/generated.ts';
 import { calculateEstimate, EstimateError } from './amounts.ts';
 import type { Estimate } from './amounts.ts';
@@ -14,14 +14,18 @@ type Props = Readonly<{
   // Maps a field key to its rectangle on the rendered page (canvas fractions);
   // used to highlight the field being edited on the live preview.
   fieldBoxes?: FieldBoxMap;
-  // Maps a failed preview to user wording. The attempt may still have saved the
-  // draft, so the message must not claim that nothing happened.
+  // Maps a failed preview to user wording.
   previewErrorText?: (failure: unknown) => string;
   // Persists the complete field set. The container decides create vs optimistic save.
   onSaveDraft?: (fields: DraftFields) => Promise<void>;
-  // Submits the confirmed preview as a paid formal version. One call = one
-  // click = one idempotency key; never invoked from a mount effect.
+  // Paid formal generation, click-triggered only. One click = one idempotency key.
   onConfirmGeneration?: () => Promise<void>;
+  // Formal file export: settles the paid version once, then downloads.
+  onExport?: (format: 'pdf' | 'png') => Promise<void>;
+  // Clears the editor into a fresh draft.
+  onReset?: () => void;
+  // Extra sections rendered under the field groups (presets, batch, …).
+  extraFormSections?: ReactNode;
   generationPending?: boolean;
   savedRevision?: number;
   savePending?: boolean;
@@ -31,27 +35,21 @@ type Props = Readonly<{
 // server confirmation the paid generation must echo back.
 export type PreviewResult = Readonly<{ image: Blob; manifestId: string; revision: number; expiresAt: string }>;
 
-const textFields = [
-  { key: 'recipient_name', label: '收件人名称', placeholder: '填写收件人名称', hint: '最多 160 字符', full: true },
-  { key: 'product_code', label: '商品编码', placeholder: '例如 53131620', hint: '最多 32 字符', full: false },
-  { key: 'unit_code', label: '单位代码', placeholder: '例如 DPC', hint: '最多 32 字符', full: false },
-  { key: 'description', label: '商品名称与说明', placeholder: '填写商品名称、规格', hint: '单行，最多 240 字符', full: true },
-  { key: 'issued_at', label: '开具时间', placeholder: '2026-11-04T10:00:00-06:00', hint: '填写日期、时间及其时区偏移', full: true },
-] as const;
+// Live preview follows typing with a debounce: each distinct content becomes a
+// saved revision and one render slot, so the interval keeps steady typing
+// inside the free-preview budget instead of one render per keystroke.
+const livePreviewDebounce = 1500;
 
 function emptyFields(): DraftFields {
   return { recipient_name: '', product_code: '', quantity: '1', unit_code: '', unit_description: '',
     description: '', issued_at: new Date().toISOString(), certification_display_at: null, unit_price: '' };
 }
 
-// Live preview follows typing with a debounce: each distinct content becomes a
-// saved revision and one render slot, so the interval keeps steady typing
-// inside the free-preview budget instead of one render per keystroke.
-const livePreviewDebounce = 1500;
-
-// The authenticated page mounts this component with a key derived from account
-// and document IDs. It intentionally has no localStorage or paid action.
-export function EditorForm({ initialFields, requestWatermarkedPreview, fieldBoxes, previewErrorText, onSaveDraft, onConfirmGeneration, generationPending = false, savedRevision, savePending = false, generationCost = '1' }: Props) {
+// The replicated editor: a grouped form column (收款方 / 商品明细 + extra
+// sections) beside a large dotted preview canvas with the export toolbar and
+// zoom controls. Paid actions are click-triggered only and gated on the
+// confirmed preview of exactly the fields on screen.
+export function EditorForm({ initialFields, requestWatermarkedPreview, fieldBoxes, previewErrorText, onSaveDraft, onConfirmGeneration, onExport, onReset, extraFormSections, generationPending = false, savedRevision, savePending = false, generationCost = '1' }: Props) {
   const prefix = useId();
   const [fields, setFields] = useState<DraftFields>(() => ({ ...(initialFields ?? emptyFields()) }));
   const [previewURL, setPreviewURL] = useState<string | null>(null);
@@ -63,6 +61,8 @@ export function EditorForm({ initialFields, requestWatermarkedPreview, fieldBoxe
   const [confirmedRevision, setConfirmedRevision] = useState<number | null>(null);
   // The form field being edited right now; its page rectangle lights up.
   const [activeField, setActiveField] = useState<string | null>(null);
+  // Preview zoom in percent of the canvas width; 100 fits the panel width.
+  const [zoom, setZoom] = useState(100);
   const sequence = useRef(0);
   const controller = useRef<AbortController | null>(null);
   const heldURL = useRef<string | null>(null);
@@ -152,79 +152,99 @@ export function EditorForm({ initialFields, requestWatermarkedPreview, fieldBoxe
     ? { left: `${activeBox.x * 100}%`, top: `${activeBox.y * 100}%`,
         width: `${activeBox.w * 100}%`, height: `${activeBox.h * 100}%` }
     : null;
+  const exportDisabled = confirmedRevision === null || generationPending;
 
-  return <div className="editor-layout">
-    <form className="card editor-card" onSubmit={(event) => { event.preventDefault(); void preview(true); }}>
-      <div className="section-heading"><h2>单据资料</h2><span className="muted">当前单据为一行商品 · 右侧实时预览</span></div>
-      <div className="field-grid">
-        {textFields.map(({ key, label, placeholder, hint, full }) => <div className={full ? 'field full' : 'field'} key={key}>
-          <label htmlFor={`${prefix}-${key}`}>{label}</label>
-          <input id={`${prefix}-${key}`} name={key} value={fields[key]} required placeholder={placeholder}
-            aria-describedby={`${prefix}-${key}-hint`} onChange={(event) => edit(key, event.target.value)} {...focusProps(key)} />
-          <small id={`${prefix}-${key}-hint`}>{hint}</small>
-        </div>)}
-        <div className="field full">
-          <label htmlFor={`${prefix}-unit-description`}>单位说明 <span className="optional">选填</span></label>
-          <textarea id={`${prefix}-unit-description`} name="unit_description" rows={2} value={fields.unit_description}
-            aria-describedby={`${prefix}-unit-description-hint`} onChange={(event) => edit('unit_description', event.target.value)} {...focusProps('unit_description')} />
-          <small id={`${prefix}-unit-description-hint`}>最多两行，每行 40 字符</small>
-        </div>
+  return <div className="tool-layout">
+    <div className="form-column">
+      <section className="form-group">
+        <div className="form-group-heading"><h3>收款方</h3><span className="group-badge">Receptor</span></div>
         <div className="field">
-          <label htmlFor={`${prefix}-price`}>单价 <span className="optional">MXN</span></label>
-          <input id={`${prefix}-price`} name="unit_price" inputMode="decimal" value={fields.unit_price} required
-            aria-describedby={`${prefix}-amount-hint`} placeholder="0.00" onChange={(event) => edit('unit_price', event.target.value)} {...focusProps('unit_price')} />
+          <label htmlFor={`${prefix}-recipient_name`}>公司 / 客户名称</label>
+          <input id={`${prefix}-recipient_name`} name="recipient_name" value={fields.recipient_name} required
+            placeholder="例如 USLAURENHANNAGROUPPLLC" onChange={(event) => edit('recipient_name', event.target.value)} {...focusProps('recipient_name')} />
         </div>
-        <div className="field">
-          <label htmlFor={`${prefix}-quantity`}>数量</label>
-          <input id={`${prefix}-quantity`} name="quantity" inputMode="decimal" value={fields.quantity} required
-            aria-describedby={`${prefix}-amount-hint`} onChange={(event) => edit('quantity', event.target.value)} {...focusProps('quantity')} />
+      </section>
+
+      <section className="form-group">
+        <div className="form-group-heading"><h3>商品明细</h3><span className="group-badge">Concepto</span></div>
+        <div className="field-row">
+          <div className="field"><label htmlFor={`${prefix}-product_code`}>产品代码</label>
+            <input id={`${prefix}-product_code`} name="product_code" value={fields.product_code} required inputMode="numeric"
+              placeholder="53131620" onChange={(event) => edit('product_code', event.target.value)} {...focusProps('product_code')} /></div>
+          <div className="field"><label htmlFor={`${prefix}-quantity`}>数量</label>
+            <input id={`${prefix}-quantity`} name="quantity" value={fields.quantity} required inputMode="decimal"
+              placeholder="5" onChange={(event) => edit('quantity', event.target.value)} {...focusProps('quantity')} /></div>
         </div>
-        <div className="field full">
-          <label htmlFor={`${prefix}-certification`}>认证显示时间 <span className="optional">选填</span></label>
-          <input id={`${prefix}-certification`} name="certification_display_at" value={fields.certification_display_at ?? ''}
-            aria-describedby={`${prefix}-certification-hint`} placeholder="含时区的日期和时间"
-            onChange={(event) => edit('certification_display_at', event.target.value || null)} {...focusProps('certification_display_at')} />
-          <small id={`${prefix}-certification-hint`}>仅作为票面文字展示，不代表已完成税务认证。</small>
+        <div className="field-row">
+          <div className="field"><label htmlFor={`${prefix}-unit_code`}>单位</label>
+            <input id={`${prefix}-unit_code`} name="unit_code" value={fields.unit_code} required
+              placeholder="DPC" onChange={(event) => edit('unit_code', event.target.value)} {...focusProps('unit_code')} /></div>
+          <div className="field"><label htmlFor={`${prefix}-unit_price`}>单价 <span className="optional">MXN</span></label>
+            <input id={`${prefix}-unit_price`} name="unit_price" value={fields.unit_price} required inputMode="decimal"
+              placeholder="86.21" onChange={(event) => edit('unit_price', event.target.value)} {...focusProps('unit_price')} /></div>
+        </div>
+        <div className="field"><label htmlFor={`${prefix}-unit_description`}>单位描述 <span className="optional">选填</span></label>
+          <textarea id={`${prefix}-unit_description`} name="unit_description" rows={2} value={fields.unit_description}
+            placeholder="Docenas de piezas" onChange={(event) => edit('unit_description', event.target.value)} {...focusProps('unit_description')} /></div>
+        <div className="field"><label htmlFor={`${prefix}-description`}>商品描述</label>
+          <input id={`${prefix}-description`} name="description" value={fields.description} required
+            placeholder="Xerjoff Erba Gold Edp 100 ml" onChange={(event) => edit('description', event.target.value)} {...focusProps('description')} /></div>
+        <div className="field-row">
+          <div className="field"><label htmlFor={`${prefix}-issued_at`}>开具时间</label>
+            <input id={`${prefix}-issued_at`} name="issued_at" value={fields.issued_at} required
+              placeholder="2026-11-04T10:00:00-06:00" onChange={(event) => edit('issued_at', event.target.value)} {...focusProps('issued_at')} /></div>
+          <div className="field"><label htmlFor={`${prefix}-certification_display_at`}>认证显示时间 <span className="optional">选填</span></label>
+            <input id={`${prefix}-certification_display_at`} name="certification_display_at" value={fields.certification_display_at ?? ''}
+              placeholder="仅为票面文字" onChange={(event) => edit('certification_display_at', event.target.value || null)} {...focusProps('certification_display_at')} /></div>
+        </div>
+        <div className="estimate" aria-live="polite">
+          <div><span>小计</span><output>{estimate?.subtotal ?? '—'}</output></div>
+          <div><span>IVA 16%</span><output>{estimate?.tax ?? '—'}</output></div>
+          <div className="total"><span>总计 <small>MXN</small></span><output>{estimate?.total ?? '—'}</output></div>
+        </div>
+        <p className={amountError && fields.unit_price ? 'field-error' : 'muted'}>
+          {amountError || '金额为即时试算，正式金额以确认的服务端预览为准。'}
+        </p>
+        {timeError && <p className="field-error" role="alert">{timeError}</p>}
+        {previewError && <p className="field-error" role="alert">{previewError}</p>}
+        <div className="form-actions">
+          {onSaveDraft && <button type="button" className="ghost" data-testid="save-draft" disabled={!formValid || savePending}
+            onClick={() => void onSaveDraft({ ...fields })}>
+            {savePending ? '正在保存…' : savedRevision ? `保存草稿（第 ${savedRevision} 版）` : '保存草稿'}</button>}
+        </div>
+      </section>
+
+      {extraFormSections}
+    </div>
+
+    <div className="canvas-column">
+      <div className="canvas-toolbar">
+        <span className="muted">{liveUpdating || pending ? '预览更新中…' : confirmedRevision === null ? '等待有效内容' : `已同步第 ${confirmedRevision} 版`}</span>
+        <div className="canvas-toolbar-actions">
+          {onReset && <button type="button" className="ghost" onClick={onReset}>↺ 重置</button>}
+          {onExport && <button type="button" className="ghost" data-testid="export-png" disabled={exportDisabled} onClick={() => void onExport('png')}>导出 PNG</button>}
+          {onConfirmGeneration && <button type="button" className="primary" data-testid="confirm-generation"
+            disabled={exportDisabled} onClick={() => void onConfirmGeneration()}>
+            {generationPending ? '正在生成…' : generationCost === '0' ? '生成票据（免积分）' : `生成票据（消费 ${generationCost} 分）`}</button>}
+          {onExport && <button type="button" className="primary" data-testid="export-pdf" disabled={exportDisabled} onClick={() => void onExport('pdf')}>导出 PDF</button>}
         </div>
       </div>
-      <div className="estimate" aria-live="polite">
-        <div><span>小计</span><output>{estimate?.subtotal ?? '—'}</output></div>
-        <div><span>IVA 16%</span><output>{estimate?.tax ?? '—'}</output></div>
-        <div className="total"><span>总计 <small>MXN</small></span><output>{estimate?.total ?? '—'}</output></div>
-      </div>
-      <p className={amountError && fields.unit_price ? 'field-error' : 'muted'} id={`${prefix}-amount-hint`}>
-        {amountError || '金额为即时试算，正式金额以确认的服务端预览为准。'}
-      </p>
-      {timeError && <p className="field-error" role="alert">{timeError}</p>}
-      <div className="form-actions">
-        {onSaveDraft && <button type="button" data-testid="save-draft" disabled={!formValid || savePending}
-          onClick={() => void onSaveDraft({ ...fields })}>
-          {savePending ? '正在保存…' : savedRevision ? `保存草稿（当前第 ${savedRevision} 版）` : '保存草稿'}
-        </button>}
-        <button type="submit" disabled={!requestWatermarkedPreview || !formValid || pending}>
-          {pending ? '正在刷新预览…' : '刷新预览'}
-        </button>
-        {onConfirmGeneration && <button type="button" data-testid="confirm-generation" disabled={confirmedRevision === null || generationPending}
-          onClick={() => void onConfirmGeneration()}>
-          {generationPending ? '正在生成…' : generationCost === '0' ? '生成正式版（免积分）' : `确认生成正式版（消费 ${generationCost} 分）`}
-        </button>}
-      </div>
-    </form>
-    <aside className="card preview-card" aria-busy={pending || liveUpdating}>
-      <div className="section-heading"><h2>实时预览</h2>
-        <span className="muted">{liveUpdating || pending ? '预览更新中…' : confirmedRevision === null ? '等待有效内容' : `已同步第 ${confirmedRevision} 版`}</span></div>
-      <div className="preview-canvas">
+      <div className="preview-canvas" aria-busy={pending || liveUpdating}>
         {previewURL
-          ? <div className="preview-sheet" data-testid="preview-sheet">
+          ? <div className="preview-sheet" data-testid="preview-sheet" style={{ width: `${zoom}%` }}>
               <img className="preview-image" data-testid="preview-image" src={previewURL} alt="当前单据的服务端水印实时预览" />
               {highlight && <div className="field-highlight" data-testid="field-highlight" style={highlight} />}
             </div>
           : <div className="preview-placeholder"><span className="page-symbol" aria-hidden="true">▤</span>
-            <h3>预览将在这里显示</h3><p>填写资料后，右侧会自动生成带水印的票面预览；正在编辑的字段会在票面上高亮定位。</p></div>}
+            <h3>预览将在这里显示</h3><p>填写左侧资料后，这里自动生成带水印的票面预览；正在编辑的字段会在票面上高亮定位。</p></div>}
         {(liveUpdating || pending) && previewURL && <span className="preview-live-pill">更新中…</span>}
+        {previewURL && <div className="preview-zoom" role="group" aria-label="预览缩放">
+          <button type="button" onClick={() => setZoom((z) => Math.max(50, z - 10))} aria-label="缩小">−</button>
+          <button type="button" className="zoom-value" onClick={() => setZoom(100)}>{zoom}%</button>
+          <button type="button" onClick={() => setZoom((z) => Math.min(200, z + 10))} aria-label="放大">＋</button>
+        </div>}
       </div>
-      {previewError && <p className="field-error" role="alert">{previewError}</p>}
-      <div className="preview-note"><strong>{generationCost === '0' ? '管理员生成免积分' : '每个新版本 1 分'}</strong><p>同版本的 PDF 和 PNG 共用权益，再次下载免费。</p></div>
-    </aside>
+      <div className="preview-note"><strong>{generationCost === '0' ? '管理员生成免积分' : '每个新版本 1 分'}</strong><p>同一版本的 PDF 与 PNG 共用权益，再次下载免费；正式文件无预览水印。</p></div>
+    </div>
   </div>;
 }

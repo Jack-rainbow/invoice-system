@@ -152,29 +152,28 @@ try {
   phase = 'authenticated customer editor';
   await verifyEditor(page, resolve('output/playwright'), 'customer', { preview: 'server' }); assert.equal(await page.getByText('每个新版本 1 分', { exact: true }).count(), 1); assert.deepEqual(errors, []);
   phase = 'draft create, optimistic save and reload';
-  assert.equal(await page.getByTestId('draft-empty').count(), 1);
-  await page.getByTestId('save-draft').click();
-  await page.waitForFunction(() => document.querySelector('[data-testid="draft-notice"]')?.textContent?.includes('第 1 版'));
-  assert.match(await page.getByTestId('draft-notice').innerText(), /580\.00/);
-  await page.getByTestId('draft-row').waitFor();
-  assert.equal(await page.getByTestId('draft-row').count(), 1);
-  assert.equal(await page.getByTestId('draft-revision').innerText(), '1');
+  // Live editing auto-saves: the debounced preview already created the draft;
+  // revisions advance with every distinct debounced edit, so assert relatively.
+  await page.getByTestId('draft-row').waitFor({ timeout: 60000 });
+  await page.waitForFunction(() => document.querySelector('[data-testid="draft-revision"]')?.textContent?.trim() !== '');
+  const baseRevision = Number(await page.getByTestId('draft-revision').innerText());
+  assert.ok(Number.isFinite(baseRevision) && baseRevision >= 1);
   const documentId = await page.getByTestId('draft-row').getAttribute('data-document-id');
   assert.match(documentId, /^[0-9a-f-]{36}$/);
-  await page.getByLabel('收件人名称', { exact: true }).fill('第二版收件人');
+  await page.getByLabel('公司 / 客户名称', { exact: true }).fill('第二版收件人');
   await page.getByTestId('save-draft').click();
-  await page.waitForFunction(() => document.querySelector('[data-testid="draft-revision"]')?.textContent === '2');
-  assert.match(await page.getByTestId('draft-notice').innerText(), /第 2 版/);
+  const nextRevision = baseRevision + 1;
+  await page.waitForFunction(v => document.querySelector('[data-testid="draft-revision"]')?.textContent === String(v), nextRevision);
   await page.reload({ waitUntil: 'networkidle' }); await page.getByTestId('signed-in-user').waitFor();
   await page.getByTestId('draft-row').waitFor();
-  assert.equal(await page.getByTestId('draft-revision').innerText(), '2');
+  assert.equal(await page.getByTestId('draft-revision').innerText(), String(nextRevision));
   await page.getByRole('button', { name: '打开', exact: true }).click();
   await page.waitForFunction(() => document.querySelector('input[name="recipient_name"]')?.value === '第二版收件人');
-  assert.equal(await page.getByLabel('收件人名称', { exact: true }).inputValue(), '第二版收件人');
+  assert.equal(await page.getByLabel('公司 / 客户名称', { exact: true }).inputValue(), '第二版收件人');
   assert.deepEqual(await page.locator('.estimate output').allTextContents(), ['500.00', '80.00', '580.00']);
   phase = 'live server-watermarked preview';
-  await page.getByLabel('收件人名称', { exact: true }).fill('第三版收件人');
-  await page.getByLabel('收件人名称', { exact: true }).focus();
+  await page.getByLabel('公司 / 客户名称', { exact: true }).fill('第三版收件人');
+  await page.getByLabel('公司 / 客户名称', { exact: true }).focus();
   // Live preview: no button click, the debounced auto render lights the page.
   await page.getByTestId('preview-image').waitFor({ timeout: 60000 });
   // The browser only ever holds a blob: of the server-composited JPEG. Assert the
@@ -203,8 +202,8 @@ try {
   assert.ok(preview.height > 1000);
   assert.ok(preview.ratio > 0.03, `watermark coverage ${preview.ratio.toFixed(3)}`);
   // Preview saves first, so the queue bound revision 3 and the list shows it.
-  await page.waitForFunction(() => document.querySelector('[data-testid="draft-revision"]')?.textContent === '3');
-  assert.match(await page.getByTestId('draft-notice').innerText(), /第 3 版/);
+  await page.waitForFunction(v => Number(document.querySelector('[data-testid="draft-revision"]')?.textContent) > v, nextRevision);
+  assert.match(await page.getByTestId('draft-notice').innerText(), /第 \d+ 版/);
   assert.deepEqual(errors, []);
   phase = 'paid formal generation consumes the granted point';
   await page.getByTestId('confirm-generation').click();
@@ -224,7 +223,7 @@ try {
   const [pngAgain] = await Promise.all([page.waitForEvent('download'), page.getByTestId('download-png').click()]);
   assert.ok((await readFile(await pngAgain.path())).length > 200000, 'zero-balance redownload must stay free and complete');
   assert.deepEqual(errors, []);
-  await page.getByLabel('收件人名称', { exact: true }).fill('测试收件人');
+  await page.getByLabel('公司 / 客户名称', { exact: true }).fill('测试收件人');
   assert.deepEqual(errors, []);
   phase = 'persistent browser restart';
   await context.close(); context = await chromium.launchPersistentContext(profile, options); page = context.pages()[0] ?? await context.newPage();

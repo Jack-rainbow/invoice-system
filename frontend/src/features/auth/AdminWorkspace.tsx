@@ -71,12 +71,28 @@ export function AdminWorkspace() {
       <button disabled={busy}>登录</button>
     </form>}
   </section>;
-  if (me.user.role === 'USER') return <><div className="account-bar"><span data-testid="signed-in-user">{me.user.username} · 客户</span><span data-testid="user-balance">可用积分 {me.wallet.available}</span><button type="button" disabled={busy} onClick={() => void act(async () => {await logoutDevice();setMe(null);})}>退出登录</button></div>{error && <p className="field-error" role="alert">{error}</p>}<DraftWorkspace generationCost="1" /></>;
+  if (me.user.role === 'USER') return <>
+    <header className="tool-topbar">
+      <span className="tool-logo" aria-hidden="true">F</span>
+      <div className="tool-title"><strong>单据模板生成器</strong><small>CFDI 版式 · 实时预览</small></div>
+      <span className="spacer" />
+      <div className="tool-user"><span data-testid="signed-in-user">{me.user.username} · 客户</span>
+        <span className="balance" data-testid="user-balance">可用积分 {me.wallet.available}</span>
+        <button type="button" className="ghost" disabled={busy} onClick={() => void act(async () => { await logoutDevice(); setMe(null); })}>退出登录</button></div>
+    </header>
+    {error && <div className="under-panels"><p className="field-error" role="alert">{error}</p></div>}
+    <DraftWorkspace generationCost="1" />
+  </>;
   return <>
-    <div className="account-bar"><span data-testid="signed-in-user">{me.user.username} · 超级管理员</span><div>
-      <button type="button" onClick={() => setTab('customers')}>客户管理</button><button type="button" onClick={() => setTab('editor')}>制作单据</button>
-      <button type="button" disabled={busy} onClick={() => void act(async () => { await request('/auth/logout', {}); setMe(null); setUsers([]); setSelected(''); setSetupLink(''); setGrantResult(null); grantKey.current = null; grantCommand.current = null; setPendingGrant(false); })}>退出登录</button>
-    </div></div>
+    <header className="tool-topbar">
+      <span className="tool-logo" aria-hidden="true">F</span>
+      <div className="tool-title"><strong>单据模板生成器</strong><small>CFDI 版式 · 实时预览</small></div>
+      <button type="button" className={'tool-tab' + (tab === 'editor' ? ' active' : '')} onClick={() => setTab('editor')}>制作单据</button>
+      <button type="button" className={'tool-tab' + (tab === 'customers' ? ' active' : '')} onClick={() => setTab('customers')}>客户管理</button>
+      <span className="spacer" />
+      <div className="tool-user"><span data-testid="signed-in-user">{me.user.username} · 管理员</span>
+        <button type="button" className="ghost" disabled={busy} onClick={() => void act(async () => { await request('/auth/logout', {}); setMe(null); setUsers([]); setSelected(''); setSetupLink(''); setGrantResult(null); grantKey.current = null; grantCommand.current = null; setPendingGrant(false); })}>退出登录</button></div>
+    </header>
     {error && <p className="field-error" role="alert">{error}</p>}
     {tab === 'editor' ? <DraftWorkspace generationCost="0" /> : <>
       <div className="form-actions"><button type="button" disabled={busy} onClick={() => void act(refreshUsers)}>刷新客户列表</button></div>

@@ -107,6 +107,35 @@ func TestAdminFlow(t *testing.T) {
 	if e != nil {
 		t.Fatal("new generation service")
 	}
+	// Drain the preview and formal queues exactly like the API process; the
+	// administrator editor's live preview renders through the real worker.
+	go func() {
+		for {
+			if _, e := previews.RunOnce(ctx); e != nil {
+				t.Logf("preview worker: %v", e)
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(100 * time.Millisecond):
+			}
+		}
+	}()
+	go func() {
+		for {
+			if _, e := generations.RunOnce(ctx); e != nil {
+				t.Logf("formal worker: %v", e)
+			}
+			if e := generations.RunFinalize(ctx); e != nil {
+				t.Logf("finalizer: %v", e)
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(100 * time.Millisecond):
+			}
+		}
+	}()
 	handler := NewHandler(Options{Business: NewAdminAPI(service, credit.New(pool, keys), docs, previews, generations, keys, origin), WebDir: filepath.Join(root, "frontend", "dist")})
 	var zeroWalletObserved atomic.Bool
 	server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

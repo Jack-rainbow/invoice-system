@@ -215,11 +215,11 @@ export function DraftWorkspace({ generationCost }: Readonly<{ generationCost: '0
     throw new RequestError('PREVIEW_STALE');
   }
 
-  // One click, one idempotency key, one billable version. The key survives the
-  // poll loop of this click so a slow network cannot mint a second order.
-  async function confirmGeneration() {
+  // One click, one idempotency key, one billable version. Returns the settled
+  // version id so exports can chain the download in the same click.
+  async function settleGeneration(): Promise<{ versionId: string } | null> {
     const confirmed = confirmedRef.current;
-    if (!confirmed || generating) return;
+    if (!confirmed || generating) return null;
     setGenerating(true); setError(''); setNotice('');
     const key = crypto.randomUUID();
     try {
@@ -230,19 +230,36 @@ export function DraftWorkspace({ generationCost }: Readonly<{ generationCost: '0
         await sleep(generationPollInterval, new AbortController().signal);
         state = await getGeneration(state.generation_id);
       }
-      if (state.state === 'COMPLETED') {
-        setNotice(`正式版 v${state.version_id.slice(0, 8)} 已生成${generationCost === '1' ? '，已消费 1 分' : ''}。PDF 与 PNG 均可在下方版本列表免费重复下载。`);
-      } else {
-        setNotice('本次生成未完成，冻结的 1 分已退回可用积分。调整内容后可重新预览并确认。');
-      }
       await refresh();
       await refreshEntries();
       if (current) await refreshVersions(current.id);
-    } catch (failure) {
-      setError(reason(failure));
+      if (state.state === 'COMPLETED') {
+        setNotice(`正式票据已生成${generationCost === '1' ? '，已消费 1 分' : ''}。PDF 与 PNG 均可免费重复下载。`);
+        return { versionId: state.version_id };
+      }
+      setNotice('本次生成未完成，冻结的 1 分已退回可用积分。调整内容后可重新预览并确认。');
+      return null;
     } finally {
       setGenerating(false);
     }
+  }
+
+  async function confirmGeneration() {
+    try { await settleGeneration(); } catch (failure) { setError(reason(failure)); }
+  }
+
+  // Export = settle the paid version once, then download the asked format; a
+  // delivered version of the same confirmed content downloads for free.
+  async function exportFormat(format: 'pdf' | 'png') {
+    try {
+      const confirmed = confirmedRef.current;
+      const delivered = versions.find(version => version.delivery_state === 'READY');
+      const reuse = !!(delivered && confirmed && current && delivered.source_revision === confirmed.revision && current.revision === confirmed.revision);
+      let versionId = reuse ? delivered!.id : (await settleGeneration())?.versionId;
+      if (!versionId) return;
+      await downloadVersion(versionId, format);
+      setNotice(`已下载 ${format.toUpperCase()} 正式文件。`);
+    } catch (failure) { setError(reason(failure)); }
   }
 
   async function open(id: string) {
@@ -293,27 +310,32 @@ export function DraftWorkspace({ generationCost }: Readonly<{ generationCost: '0
     });
   }
 
-  return <div className="draft-workspace">
-    <section className="card" aria-busy={loading}>
-      <div className="section-heading"><h2>我的单据</h2><span className="muted">最近 5 条，按创建时间倒序</span></div>
+  const presetSection = <>
+    <section className="form-group" data-testid="preset-panel">
+      <div className="form-group-heading"><h3>产品预设</h3>
+        <span className="group-badge">Presets{presets.length > 0 && <span className="count">{presets.length}</span>}</span></div>
+      <div className="field inline-save">
+        <input value={presetName} maxLength={160} placeholder="给当前商品起个名字，便于下次调用"
+          onChange={(event) => setPresetName(event.target.value)} />
+        <button type="button" className="ghost" data-testid="save-preset" disabled={busy || !presetName.trim() || !current}
+          onClick={() => void savePresetAs()}>保存</button>
+      </div>
+      {presets.map(preset => <div key={preset.id} className="preset-chip" data-testid="preset-row">
+        <span title={preset.fields.description}>{preset.name}</span>
+        <span className="form-actions">
+          <button type="button" disabled={busy || !current} onClick={() => applyPreset(preset)}>套用</button>
+          <button type="button" disabled={busy} onClick={() => void removePreset(preset)}>删除</button>
+        </span>
+      </div>)}
+    </section>
+    <button type="button" className="collapse-toggle" disabled>批量生成 <span className="muted">即将上线 ›</span></button>
+  </>;
+
+  return <>
+    {(error || notice) && <div className="under-panels">
       {error && <p className="field-error" role="alert">{error}</p>}
       {notice && <p className="muted" data-testid="draft-notice">{notice}</p>}
-      {loading ? <p className="muted">正在读取单据…</p> : items.length === 0
-        ? <p className="muted" data-testid="draft-empty">还没有单据。填写资料后保存草稿。</p>
-        : <div className="customer-list">{items.map(item => <div key={item.id} data-testid="draft-row" data-revision={item.revision} data-document-id={item.id}>
-            <strong>{item.id.slice(0, 8)}</strong>
-            <span>第 <b data-testid="draft-revision">{item.revision}</b> 版 · {statusLabels[item.status]}</span>
-            <span>{new Date(item.created_at).toLocaleString()}</span>
-            <span className="form-actions">
-              <button type="button" disabled={busy} onClick={() => void open(item.id)}>打开</button>
-              {item.status === 'DRAFT' && <button type="button" disabled={busy} onClick={() => void remove(item)}>删除</button>}
-            </span>
-          </div>)}</div>}
-      <div className="form-actions">
-        <button type="button" disabled={busy} onClick={() => { setCurrent(null); setFormKey((previous) => previous + 1); setNotice(''); setError(''); }}>新建草稿</button>
-        {nextCursor && <button type="button" disabled={busy} onClick={() => void act(async () => { await refresh(nextCursor); })}>加载更多</button>}
-      </div>
-    </section>
+    </div>}
     <EditorForm
       key={'draft-form-' + formKey}
       {...(current ? { initialFields: current.fields } : {})}
@@ -322,51 +344,57 @@ export function DraftWorkspace({ generationCost }: Readonly<{ generationCost: '0
       requestWatermarkedPreview={previewWatermarked}
       fieldBoxes={fieldBoxes}
       onConfirmGeneration={confirmGeneration}
+      onExport={exportFormat}
+      onReset={() => { setCurrent(null); confirmedRef.current = null; setFormKey((p) => p + 1); setNotice(''); setError(''); }}
+      extraFormSections={presetSection}
       generationPending={generating}
       previewErrorText={reason}
       {...(current ? { savedRevision: current.revision } : {})}
       savePending={busy}
     />
-    {current && versions.length > 0 && <section className="card" data-testid="version-panel">
-      <div className="section-heading"><h2>正式版本</h2><span className="muted">同版本 PDF / PNG 共用权益，重复下载免费</span></div>
-      <div className="customer-list">{versions.map(version => <div key={version.id} data-testid="version-row">
-        <strong>v{version.version_no}</strong>
-        <span>第 {version.source_revision} 版草稿 · 总计 {version.amounts.total} MXN</span>
-        <span>{new Date(version.created_at).toLocaleString()}</span>
-        <span className="form-actions">
-          {version.delivery_state === 'READY'
-            ? <>
-                <button type="button" data-testid="download-pdf" disabled={busy} onClick={() => void act(async () => { await downloadVersion(version.id, 'pdf'); })}>下载 PDF</button>
-                <button type="button" data-testid="download-png" disabled={busy} onClick={() => void act(async () => { await downloadVersion(version.id, 'png'); })}>下载 PNG</button>
-              </>
-            : <span className="muted">交付确认中…</span>}
-        </span>
-      </div>)}</div>
-    </section>}
-    {presets.length > 0 && <section className="card" data-testid="preset-panel">
-      <div className="section-heading"><h2>商品预设</h2><span className="muted">仅保存本人可填字段，金额由服务端重新计算</span></div>
-      <div className="customer-list">{presets.map(preset => <div key={preset.id} data-testid="preset-row">
-        <strong>{preset.name}</strong>
-        <span>{preset.fields.description}</span>
-        <span className="form-actions">
-          <button type="button" disabled={busy || !current} onClick={() => applyPreset(preset)}>套用</button>
-          <button type="button" disabled={busy} onClick={() => void removePreset(preset)}>删除</button>
-        </span>
-      </div>)}</div>
-    </section>}
-    <section className="card" data-testid="ledger-panel">
-      <div className="section-heading"><h2>积分流水</h2><span className="muted">可用与冻结分开记录；预留不是最终扣费</span></div>
-      {entries.length === 0 ? <p className="muted">暂无流水。</p> : <div className="customer-list">{entries.map(entry => <div key={entry.id} data-testid="ledger-row">
-        <strong>{entry.kind}</strong>
-        <span>可用 {entry.delta_available.startsWith('-') ? '' : '+'}{entry.delta_available} · 冻结 {entry.delta_frozen.startsWith('-') ? '' : '+'}{entry.delta_frozen}</span>
-        <span>余额 {entry.after_available} / 冻结 {entry.after_frozen}</span>
-        <span>{new Date(entry.created_at).toLocaleString()}</span>
-      </div>)}</div>}
-      {current && <div className="form-actions">
-        <label htmlFor="preset-name">预设名称</label>
-        <input id="preset-name" value={presetName} maxLength={160} placeholder="将当前草稿存为预设" onChange={(event) => setPresetName(event.target.value)} />
-        <button type="button" data-testid="save-preset" disabled={busy || !presetName.trim() || !current} onClick={() => void savePresetAs()}>保存为预设</button>
-      </div>}
-    </section>
-  </div>;
+    <div className="under-panels">
+      <section className="card" aria-busy={loading}>
+        <div className="section-heading"><h2>我的单据</h2><span className="muted">最近 5 条，按创建时间倒序</span></div>
+        {loading ? <p className="muted">正在读取单据…</p> : items.length === 0
+          ? <p className="muted" data-testid="draft-empty">还没有单据。填写资料后自动保存草稿。</p>
+          : <div className="customer-list">{items.map(item => <div key={item.id} data-testid="draft-row" data-revision={item.revision} data-document-id={item.id}>
+              <strong>{item.id.slice(0, 8)}</strong>
+              <span>第 <b data-testid="draft-revision">{item.revision}</b> 版 · {statusLabels[item.status]}</span>
+              <span>{new Date(item.created_at).toLocaleString()}</span>
+              <span className="form-actions">
+                <button type="button" disabled={busy} onClick={() => void open(item.id)}>打开</button>
+                {item.status === 'DRAFT' && <button type="button" disabled={busy} onClick={() => void remove(item)}>删除</button>}
+              </span>
+            </div>)}</div>}
+        <div className="form-actions">
+          {nextCursor && <button type="button" className="ghost" disabled={busy} onClick={() => void act(async () => { await refresh(nextCursor); })}>加载更多</button>}
+        </div>
+      </section>
+      {current && versions.length > 0 && <section className="card" data-testid="version-panel">
+        <div className="section-heading"><h2>正式版本</h2><span className="muted">同版本 PDF / PNG 共用权益，重复下载免费</span></div>
+        <div className="customer-list">{versions.map(version => <div key={version.id} data-testid="version-row">
+          <strong>v{version.version_no}</strong>
+          <span>第 {version.source_revision} 版草稿 · 总计 {version.amounts.total} MXN</span>
+          <span>{new Date(version.created_at).toLocaleString()}</span>
+          <span className="form-actions">
+            {version.delivery_state === 'READY'
+              ? <>
+                  <button type="button" data-testid="download-pdf" disabled={busy} onClick={() => void act(async () => { await downloadVersion(version.id, 'pdf'); })}>下载 PDF</button>
+                  <button type="button" data-testid="download-png" disabled={busy} onClick={() => void act(async () => { await downloadVersion(version.id, 'png'); })}>下载 PNG</button>
+                </>
+              : <span className="muted">交付确认中…</span>}
+          </span>
+        </div>)}</div>
+      </section>}
+      <section className="card" data-testid="ledger-panel">
+        <div className="section-heading"><h2>积分流水</h2><span className="muted">可用与冻结分开记录；预留不是最终扣费</span></div>
+        {entries.length === 0 ? <p className="muted">暂无流水。</p> : <div className="customer-list">{entries.map(entry => <div key={entry.id} data-testid="ledger-row">
+          <strong>{entry.kind}</strong>
+          <span>可用 {entry.delta_available.startsWith('-') ? '' : '+'}{entry.delta_available} · 冻结 {entry.delta_frozen.startsWith('-') ? '' : '+'}{entry.delta_frozen}</span>
+          <span>余额 {entry.after_available} / 冻结 {entry.after_frozen}</span>
+          <span>{new Date(entry.created_at).toLocaleString()}</span>
+        </div>)}</div>}
+      </section>
+    </div>
+  </>;
 }
