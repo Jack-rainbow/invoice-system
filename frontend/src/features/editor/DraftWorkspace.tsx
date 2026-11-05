@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CreditEntry, DocumentSummary, DraftFields, PresetResponse, VersionSummary } from '../../shared/api/generated.ts';
+import type { CreditEntry, DocumentSummary, DraftFields, FieldBoxMap, PresetResponse, VersionSummary } from '../../shared/api/generated.ts';
 import { RequestError } from '../../shared/api/authTransport.ts';
 import { changeDraftProfile, createDraft, createPreview, deleteDraft, getDraft, getPreview, getPreviewImage, listDocuments, listRenderProfiles, saveDraft } from './drafts.ts';
 import { createGeneration, downloadVersion, getGeneration, listVersions } from './generations.ts';
@@ -88,6 +88,7 @@ export function DraftWorkspace({ generationCost }: Readonly<{ generationCost: '0
   const [versions, setVersions] = useState<VersionSummary[]>([]);
   const [generating, setGenerating] = useState(false);
   const [presets, setPresets] = useState<PresetResponse[]>([]);
+  const [fieldBoxes, setFieldBoxes] = useState<FieldBoxMap | undefined>(undefined);
   const [presetName, setPresetName] = useState('');
   const [entries, setEntries] = useState<CreditEntry[]>([]);
   // The editor is remounted only when the user opens or starts another draft.
@@ -132,6 +133,14 @@ export function DraftWorkspace({ generationCost }: Readonly<{ generationCost: '0
   }
 
   useEffect(() => { void refreshPresets(); void refreshEntries(); }, []);
+
+  // Field geometry of the ACTIVE template drives the edit-time highlight on
+  // the live preview; it is metadata only and carries no template content.
+  useEffect(() => {
+    let live = true;
+    void listRenderProfiles().then((page) => { if (live) setFieldBoxes(page.field_boxes); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
 
   function reason(failure: unknown): string {
     if (failure instanceof RequestError) {
@@ -311,6 +320,7 @@ export function DraftWorkspace({ generationCost }: Readonly<{ generationCost: '0
       generationCost={generationCost}
       onSaveDraft={save}
       requestWatermarkedPreview={previewWatermarked}
+      fieldBoxes={fieldBoxes}
       onConfirmGeneration={confirmGeneration}
       generationPending={generating}
       previewErrorText={reason}

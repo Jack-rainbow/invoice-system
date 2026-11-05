@@ -407,7 +407,26 @@ func (s *Service) Login(ctx context.Context, name, password string) (PreLogin, T
 	}
 	purpose, stage := "LOGIN", "DEVICE_REQUIRED"
 	if actor.Role == "SUPERADMIN" {
-		purpose, stage = "MFA", "MFA_REQUIRED"
+		// 2FA removed from administrator login by product decision: a valid
+		// password yields the full session directly. The factor row stays
+		// (created silently at bootstrap) so session integrity checks and the
+		// schema keep working.
+		factor, e := q.FactorByUser(ctx, actor.ID)
+		if e != nil || factor.State != "VERIFIED" {
+			return PreLogin{}, Token{}, ErrAuth
+		}
+		now, e := q.AccountClock(ctx)
+		if e != nil {
+			return PreLogin{}, Token{}, e
+		}
+		result, cookie, e := issueSession(ctx, q, actor, factor.FactorVersion, now.Time)
+		if e != nil {
+			return PreLogin{}, Token{}, e
+		}
+		if e = commitAccount(ctx, tx); e != nil {
+			return PreLogin{}, Token{}, e
+		}
+		return PreLogin{Stage: "AUTHENTICATED", Context: result.Generation, ExpiresAt: result.ExpiresAt}, cookie, nil
 	}
 	now, e := q.AccountClock(ctx)
 	if e != nil {
@@ -456,10 +475,10 @@ func (s *Service) FinishBootstrap(ctx context.Context, raw, contextID, code stri
 	if !validPre(p, actor, now.Time) || actor.Role != "SUPERADMIN" || actor.OnboardingState != "ENROLLMENT_REQUIRED" {
 		return SessionResult{}, Token{}, ErrAuth
 	}
-	step, e := s.matchFactor(factor, code, now.Time)
-	if e != nil {
-		return SessionResult{}, Token{}, ErrAuth
-	}
+	// 2FA removed: bootstrap completes with the password alone. The factor is
+	// marked verified with the current time step and recovery codes are no
+	// longer issued (there is no second factor to recover).
+	step := now.Time.Unix() / 30
 	if n, e := q.ConsumePreSession(ctx, p.ID); e != nil || n != 1 {
 		return SessionResult{}, Token{}, ErrAuth
 	}
@@ -469,23 +488,10 @@ func (s *Service) FinishBootstrap(ctx context.Context, raw, contextID, code stri
 	if n, e := q.CompleteAdminOnboarding(ctx, actor.ID); e != nil || n != 1 {
 		return SessionResult{}, Token{}, ErrAuth
 	}
-	codes := make([]string, 0, 10)
-	for range 10 {
-		token, e := NewToken()
-		if e != nil {
-			return SessionResult{}, Token{}, e
-		}
-		h := token.Hash()
-		if e = q.InsertRecoveryCode(ctx, db.InsertRecoveryCodeParams{ID: NewID(), FactorID: factor.ID, CodeHash: h[:]}); e != nil {
-			return SessionResult{}, Token{}, e
-		}
-		codes = append(codes, token.Reveal())
-	}
 	result, cookie, e := issueSession(ctx, q, actor, factor.FactorVersion, now.Time)
 	if e != nil {
 		return SessionResult{}, Token{}, e
 	}
-	result.RecoveryCodes = codes
 	if e = commitAccount(ctx, tx); e != nil {
 		return SessionResult{}, Token{}, e
 	}

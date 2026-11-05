@@ -281,6 +281,32 @@ export type FactorChangedResponse = {
   "state": "FACTOR_CHANGED_REAUTHENTICATE";
 };
 
+export type FieldBox = {
+  "h": number;
+  "w": number;
+  "x": number;
+  "y": number;
+};
+
+export type FieldBoxMap = {
+  "certification_display_at"?: FieldBox;
+  "description"?: FieldBox;
+  "issued_at"?: FieldBox;
+  "line_amount"?: FieldBox;
+  "product_code"?: FieldBox;
+  "quantity"?: FieldBox;
+  "recipient_name"?: FieldBox;
+  "subtotal"?: FieldBox;
+  "tax_amount"?: FieldBox;
+  "tax_detail"?: FieldBox;
+  "tax_label"?: FieldBox;
+  "total"?: FieldBox;
+  "total_words"?: FieldBox;
+  "unit_code"?: FieldBox;
+  "unit_description"?: FieldBox;
+  "unit_price"?: FieldBox;
+};
+
 export type FieldError = {
   "code": "REQUIRED" | "INVALID_FORMAT" | "OUT_OF_RANGE" | "TEXT_DOES_NOT_FIT";
   "field": string;
@@ -488,7 +514,7 @@ export type PositiveInt32 = number;
 export type PreSessionResponse = {
   "context_id": UUID;
   "expires_at": Timestamp;
-  "stage": "DEVICE_REQUIRED" | "MFA_REQUIRED" | "TRANSFER_REQUIRED";
+  "stage": "DEVICE_REQUIRED" | "MFA_REQUIRED" | "TRANSFER_REQUIRED" | "AUTHENTICATED";
 };
 
 export type PresetList = {
@@ -554,10 +580,12 @@ export type ReasonRequest = {
 };
 
 export type RenderProfileList = {
+  "field_boxes"?: FieldBoxMap;
   "items": Array<RenderProfileSummary>;
 };
 
 export type RenderProfileSummary = {
+  "field_boxes"?: FieldBoxMap;
   "id": UUID;
   "name": string;
   "status": "ACTIVE" | "REVOKED";

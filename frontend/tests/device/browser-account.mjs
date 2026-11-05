@@ -86,11 +86,9 @@ try {
   const adminContext = await browser.newContext({ ignoreHTTPSErrors: true }); const admin = await adminContext.newPage();
   phase = 'administrator enrollment and real customer creation';
   await admin.goto(f.bootstrapLink, { waitUntil: 'networkidle' }); await admin.getByLabel('设置管理员密码', { exact: true }).fill(adminPassword);
-  await admin.getByRole('button', { name: '开始启用', exact: true }).click(); await admin.getByTestId('mfa-seed').waitFor();
-  const seed = await admin.getByTestId('mfa-seed').innerText(); secrets.push(seed);
-  await admin.getByLabel('验证器验证码', { exact: true }).fill(otp(seed)); await admin.getByRole('button', { name: '完成管理员启用', exact: true }).click();
-  await admin.getByRole('button', { name: '已安全保存', exact: true }).waitFor(); secrets.push(...await admin.locator('.secret-panel code').allTextContents());
-  await admin.getByRole('button', { name: '已安全保存', exact: true }).click();
+  // 2FA removed: the password alone enables the administrator.
+  await admin.getByRole('button', { name: '设置密码并启用', exact: true }).click();
+  await admin.getByTestId('signed-in-user').waitFor();
   await admin.getByLabel('客户用户名', { exact: true }).fill(f.customer); await admin.getByLabel('核验渠道引用', { exact: true }).fill('private-device-flow'); await admin.getByLabel('开户原因', { exact: true }).fill('device browser verification');
   await admin.getByRole('button', { name: '新增客户', exact: true }).click(); await admin.getByTestId('setup-link').waitFor();
   const setupLink = await admin.getByTestId('setup-link').innerText(); secrets.push(setupLink);
@@ -125,7 +123,7 @@ try {
   phase = 'logout and normal device login';
   await page.getByRole('button', { name: '退出登录', exact: true }).click(); await page.getByRole('heading', { name: '登录单据工作台', exact: true }).waitFor();
   await page.getByLabel('用户名', { exact: true }).fill(f.customer); await page.getByLabel('登录密码', { exact: true }).fill(password);
-  await page.getByRole('button', { name: '继续登录', exact: true }).click(); await page.getByTestId('signed-in-user').waitFor();
+  await page.getByRole('button', { name: '登录', exact: true }).click(); await page.getByTestId('signed-in-user').waitFor();
   let current = await api(page, '/auth/device/context'); assert.notEqual(current.data.generation, original.data.generation); assert.equal(current.data.binding_id, original.data.binding_id);
   phase = 'wrong computer with known password';
   const wrong = await browser.newContext({ ignoreHTTPSErrors: true }); const wrongPage = await wrong.newPage(); await wrongPage.goto(f.origin, { waitUntil: 'networkidle' });
@@ -174,9 +172,10 @@ try {
   await page.waitForFunction(() => document.querySelector('input[name="recipient_name"]')?.value === '第二版收件人');
   assert.equal(await page.getByLabel('收件人名称', { exact: true }).inputValue(), '第二版收件人');
   assert.deepEqual(await page.locator('.estimate output').allTextContents(), ['500.00', '80.00', '580.00']);
-  phase = 'server-watermarked preview';
+  phase = 'live server-watermarked preview';
   await page.getByLabel('收件人名称', { exact: true }).fill('第三版收件人');
-  await page.getByRole('button', { name: '查看水印预览', exact: true }).click();
+  await page.getByLabel('收件人名称', { exact: true }).focus();
+  // Live preview: no button click, the debounced auto render lights the page.
   await page.getByTestId('preview-image').waitFor({ timeout: 60000 });
   // The browser only ever holds a blob: of the server-composited JPEG. Assert the
   // decoded size, and sample the pixels: a page whose ink sits only on the text
@@ -237,7 +236,7 @@ try {
   phase = 'missing private key never regenerates';
   await page.evaluate(async () => { const db = await new Promise(done => { const r = indexedDB.open('invoice-device-v1', 1); r.onsuccess = () => done(r.result); }); await new Promise(done => { const tx = db.transaction(['keys', 'bindings'], 'readwrite'); tx.objectStore('keys').clear(); tx.objectStore('bindings').clear(); tx.oncomplete = done; }); db.close(); });
   await page.reload({ waitUntil: 'networkidle' }); await page.getByRole('heading', { name: '登录单据工作台', exact: true }).waitFor();
-  await page.getByLabel('用户名', { exact: true }).fill(f.customer); await page.getByLabel('登录密码', { exact: true }).fill(password); await page.getByRole('button', { name: '继续登录', exact: true }).click();
+  await page.getByLabel('用户名', { exact: true }).fill(f.customer); await page.getByLabel('登录密码', { exact: true }).fill(password); await page.getByRole('button', { name: '登录', exact: true }).click();
   await page.getByRole('alert').waitFor(); assert.match(await page.getByRole('alert').innerText(), /设备密钥|原浏览器/); assert.deepEqual(await keyCounts(page), { keys: 0, bindings: 0, nonExportable: true });
   const idleProbe = await api(page, '/auth/device/context'); assert.equal(idleProbe.status, 200);
   console.log(JSON.stringify({ status: 'PASS', browser: context.browser().version(), idle_probe_time: idleProbe.data.server_time, checks: ['admin creates real zero-credit USER', 'initial setup and designated binding', 'normal signed login and logout', 'valid proof rotates active session and old Cookie is rejected', 'signed USER forbidden from admin metadata', 'Cookie-only denied', 'wrong device with password denied without revoking old session', 'copied Cookie wrong key denied', 'invalid signature nonce not consumed', 'query binding and concurrent replay denial', 'customer editor', 'draft create/save/reload/delete', 'server-watermarked preview JPEG', 'one-point grant and paid formal generation', 'watermark-free PDF and 2x PNG downloads', 'zero-balance free redownload', 'browser restart', 'existing candidate recovery', 'missing key no regeneration'] }));

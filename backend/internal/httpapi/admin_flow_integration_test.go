@@ -180,27 +180,28 @@ func TestAdminFlow(t *testing.T) {
 		t.Fatal("account creation reason must be retained without setup secret/contact")
 	}
 	t.Log("PASS committed zero wallet, one GRANT despite retry/attacks, no USER session/binding/password bypass, encrypted verification reference")
-	// A full MFA session may read management metadata after the recent window,
-	// but the same identity must not create accounts or grant points.
+	// 2FA removed from login: a complete session authorizes management writes
+	// regardless of the former five-minute "recent MFA" window. Revoked
+	// sessions must still be rejected.
 	var p credit.Principal
 	if e := pool.QueryRow(ctx, `SELECT s.user_id,s.id,s.generation FROM device_sessions s JOIN users u ON u.id=s.user_id WHERE u.username='flow_admin' AND s.status='ACTIVE'`).Scan(&p.ActorUserID, &p.SessionID, &p.Generation); e != nil {
 		t.Fatal("current admin session missing")
 	}
-	if _, e := pool.Exec(ctx, "UPDATE device_sessions SET mfa_verified_at=clock_timestamp()-interval '6 minutes' WHERE id=$1", p.SessionID); e != nil {
-		t.Fatal("test MFA age")
-	}
-	if page, e := service.ManagedUsers(ctx, p, account.UserFilter{}); e != nil || len(page.Items) != 2 {
-		t.Fatal("full MFA read incorrectly requires recent MFA")
-	}
-	if _, e := service.CreateUser(ctx, p, testdb.UUID(t), account.CreateUserCommand{Username: "must_not_exist", Verification: "manual-test-channel", Reason: "must reject stale MFA"}); !errors.Is(e, credit.ErrUnauthorized) {
-		t.Fatal("stale MFA permitted account creation")
+	if _, e := service.CreateUser(ctx, p, testdb.UUID(t), account.CreateUserCommand{Username: "aged_session_user", Verification: "manual-test-channel", Reason: "complete session authorizes without 2FA"}); e != nil {
+		t.Fatalf("write incorrectly required recent MFA after 2FA removal: %v", e)
 	}
 	var target pgtype.UUID
 	if e := pool.QueryRow(ctx, "SELECT id FROM users WHERE username='flow_customer'").Scan(&target); e != nil {
 		t.Fatal(e)
 	}
-	if _, e := credit.New(pool, keys).Grant(ctx, p, credit.Command{TargetUserID: target, Points: 9, Reason: "must reject stale MFA", IdempotencyKey: testdb.UUID(t)}); !errors.Is(e, credit.ErrUnauthorized) {
-		t.Fatal("stale MFA permitted grant")
+	if _, e := credit.New(pool, keys).Grant(ctx, p, credit.Command{TargetUserID: target, Points: 3, Reason: "aged session grant", IdempotencyKey: testdb.UUID(t)}); e != nil {
+		t.Fatalf("grant incorrectly required recent MFA after 2FA removal: %v", e)
 	}
-	t.Log("PASS full MFA metadata read and recent MFA write boundary")
+	if _, e := pool.Exec(ctx, "UPDATE device_sessions SET status='REVOKED' WHERE id=$1", p.SessionID); e != nil {
+		t.Fatal(e)
+	}
+	if _, e := credit.New(pool, keys).Grant(ctx, p, credit.Command{TargetUserID: target, Points: 1, Reason: "must reject revoked", IdempotencyKey: testdb.UUID(t)}); !errors.Is(e, credit.ErrUnauthorized) {
+		t.Fatal("revoked session permitted grant")
+	}
+	t.Log("PASS password-only admin writes; revoked session still rejected")
 }

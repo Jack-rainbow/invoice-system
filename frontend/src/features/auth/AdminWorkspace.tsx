@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AdminUserList, BootstrapConfirmResponse, BootstrapStartResponse, CreateUserResponse, GrantResponse, MeResponse, PreSessionResponse, MFAChallengeResponse, SessionResponse } from '../../shared/api/generated.ts';
+import type { AdminUserList, BootstrapConfirmResponse, BootstrapStartResponse, CreateUserResponse, GrantResponse, MeResponse, PreSessionResponse } from '../../shared/api/generated.ts';
 import { DraftWorkspace } from '../editor/DraftWorkspace.tsx';
 
 import { request, RequestError } from '../../shared/api/authTransport.ts';
@@ -17,12 +17,9 @@ type ManagedUser = Omit<CreateUserResponse, 'setup_link'>;
 export function AdminWorkspace() {
   const [setupToken, setSetupToken] = useState(() => location.pathname === '/setup' ? new URLSearchParams(location.hash.slice(1)).get('token') ?? '' : '');
   const [bootstrapToken, setBootstrapToken] = useState(() => location.pathname === '/setup/admin' ? new URLSearchParams(location.hash.slice(1)).get('token') ?? '' : '');
-  const [bootstrap, setBootstrap] = useState<BootstrapStartResponse | null>(null);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [checking, setChecking] = useState(!bootstrapToken && !setupToken);
-  const [stage, setStage] = useState<'password' | 'mfa'>('password');
-  const [name, setName] = useState(''); const [password, setPassword] = useState(''); const [code, setCode] = useState('');
-  const [recoveryMode, setRecoveryMode] = useState(false); const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [name, setName] = useState(''); const [password, setPassword] = useState('');
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const busyRef = useRef(false);
   const [tab, setTab] = useState<'customers' | 'editor'>('customers');
   const [users, setUsers] = useState<ManagedUser[]>([]); const [selected, setSelected] = useState('');
@@ -32,8 +29,7 @@ export function AdminWorkspace() {
   const [amount, setAmount] = useState('1'); const [grantReason, setGrantReason] = useState('');
   const grantKey = useRef<string | null>(null); const grantCommand = useRef<{ id: string; amount: string; reason: string } | null>(null);
   const [grantResult, setGrantResult] = useState<GrantResponse | null>(null); const [pendingGrant, setPendingGrant] = useState(false);
-  const [stepUp, setStepUp] = useState(false);
-  const loadMe = async () => { const value = await authenticatedMe(); setMe(value); setStage('password'); setBootstrap(null); setBootstrapToken(''); setSetupToken(''); };
+  const loadMe = async () => { const value = await authenticatedMe(); setMe(value); setBootstrapToken(''); setSetupToken(''); };
   const refreshUsers = async () => { const value = await request<AdminUserList>('/admin/users'); setUsers(value.items); setNextCursor(value.next_cursor); };
   const loadMoreUsers = async () => { if (!nextCursor) return; const value = await request<AdminUserList>('/admin/users?cursor=' + encodeURIComponent(nextCursor)); setUsers(previous => [...previous,...value.items.filter(u => !previous.some(p => p.user.id === u.user.id))]);setNextCursor(value.next_cursor); };
   useEffect(() => {
@@ -50,25 +46,31 @@ export function AdminWorkspace() {
     try { await action(); } catch (failure) { setError((failure instanceof RequestError || failure instanceof DeviceKeyStorageError) ? messages[failure.code] ?? '服务暂时不可用，请保留当前操作并稍后重试。' : '请求未完成，请使用原操作重试。'); }
     finally { busyRef.current = false; setBusy(false); }
   }
-  const seedPanel = bootstrap && <div className="secret-panel"><p>将以下密钥添加到验证器，确认后不会再次显示。</p><code data-testid="mfa-seed">{bootstrap.seed}</code></div>;
   if (checking) return <section className="card auth-card" role="status">正在核对登录状态…</section>;
   if (!me && setupToken) return <section className="card auth-card"><h1>激活客户设备</h1><p>此浏览器将保存不可导出的设备密钥，请使用日后登录的浏览器。</p>{error && <p className="field-error" role="alert">{error}</p>}<form onSubmit={e => {e.preventDefault();void act(async () => {await initialDeviceSetup(setupToken,password);setPassword('');await loadMe();});}}><label>设置客户密码<input type="password" autoComplete="new-password" required value={password} onChange={e => setPassword(e.target.value)} /></label><p className="muted">12–128 个字符。浏览器无法保存密钥时会停止激活。</p><button disabled={busy}>设置密码并授权此浏览器</button></form></section>;
   if (!me) return <section className="card auth-card">
-    <h1>{bootstrapToken ? '启用超级管理员' : stage === 'mfa' ? '管理员二次验证' : '登录单据工作台'}</h1>
+    <h1>{bootstrapToken ? '启用超级管理员' : '登录单据工作台'}</h1>
     {error && <p className="field-error" role="alert">{error}</p>}
-    {bootstrapToken && !bootstrap ? <form onSubmit={e => { e.preventDefault(); void act(async () => { const value = await request<BootstrapStartResponse>('/auth/admin/bootstrap/start', { bootstrap_token: bootstrapToken, new_password: password }); setBootstrap(value); setPassword(''); }); }}>
-      <label>设置管理员密码<input type="password" autoComplete="new-password" required value={password} onChange={e => setPassword(e.target.value)} /></label><p className="muted">12–128 个字符。随后须启用验证器。</p><button disabled={busy}>开始启用</button>
-    </form> : bootstrap ? <form onSubmit={e => { e.preventDefault(); void act(async () => { const result = await request<BootstrapConfirmResponse>('/auth/admin/bootstrap/confirm', { bootstrap_context: bootstrap.bootstrap_context, totp: code }); setCode(''); setRecoveryCodes(result.recovery_codes); await loadMe(); }); }}>
-      {seedPanel}<label>验证器验证码<input autoComplete="one-time-code" inputMode="numeric" required value={code} onChange={e => setCode(e.target.value)} /></label><button disabled={busy}>完成管理员启用</button>
-    </form> : stage === 'mfa' ? <form onSubmit={e => { e.preventDefault(); void act(async () => { const c = await request<MFAChallengeResponse>('/auth/mfa/challenges', { purpose: 'LOGIN' }); await request<SessionResponse>('/auth/mfa/verify', { challenge_id: c.challenge_id, ...(recoveryMode ? { recovery_code: code } : { totp: code }) }); setCode(''); await loadMe(); }); }}>
-      <label>{recoveryMode ? '恢复码' : '登录验证码'}<input autoComplete={recoveryMode ? 'off' : 'one-time-code'} required value={code} onChange={e => setCode(e.target.value)} /></label>
-      <label><input type="checkbox" checked={recoveryMode} onChange={e => { setRecoveryMode(e.target.checked); setCode(''); }} /> 使用一次性恢复码</label><button disabled={busy}>验证并登录</button>
-    </form> : <form onSubmit={e => { e.preventDefault(); void act(async () => { const result = await request<PreSessionResponse>('/auth/login', { username: name, password }); setPassword(''); if (result.stage === 'MFA_REQUIRED') setStage('mfa'); else { await loginDevice(); await loadMe(); } }); }}>
+    {bootstrapToken ? <form onSubmit={e => { e.preventDefault(); void act(async () => {
+      // 2FA removed: setting the password completes enrollment directly.
+      const value = await request<BootstrapStartResponse>('/auth/admin/bootstrap/start', { bootstrap_token: bootstrapToken, new_password: password });
+      await request<BootstrapConfirmResponse>('/auth/admin/bootstrap/confirm', { bootstrap_context: value.bootstrap_context, totp: '' });
+      setPassword(''); await loadMe();
+    }); }}>
+      <label>设置管理员密码<input type="password" autoComplete="new-password" required value={password} onChange={e => setPassword(e.target.value)} /></label>
+      <p className="muted">12–128 个字符。设置后即可登录，无需验证器。</p>
+      <button disabled={busy}>设置密码并启用</button>
+    </form> : <form onSubmit={e => { e.preventDefault(); void act(async () => {
+      const result = await request<PreSessionResponse>('/auth/login', { username: name, password });
+      setPassword('');
+      if (result.stage === 'AUTHENTICATED') { await loadMe(); }
+      else { await loginDevice(); await loadMe(); }
+    }); }}>
       <label>用户名<input autoComplete="username" required value={name} onChange={e => setName(e.target.value)} /></label>
-      <label>登录密码<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></label><button disabled={busy}>继续登录</button>
+      <label>登录密码<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></label>
+      <button disabled={busy}>登录</button>
     </form>}
   </section>;
-  if (recoveryCodes.length) return <section className="card auth-card"><h1>保存一次性恢复码</h1><p>每个恢复码只能使用一次。关闭后无法重新查看。</p><div className="secret-panel">{recoveryCodes.map(value => <code key={value}>{value}</code>)}</div><button onClick={() => setRecoveryCodes([])}>已安全保存</button></section>;
   if (me.user.role === 'USER') return <><div className="account-bar"><span data-testid="signed-in-user">{me.user.username} · 客户</span><span data-testid="user-balance">可用积分 {me.wallet.available}</span><button type="button" disabled={busy} onClick={() => void act(async () => {await logoutDevice();setMe(null);})}>退出登录</button></div>{error && <p className="field-error" role="alert">{error}</p>}<DraftWorkspace generationCost="1" /></>;
   return <>
     <div className="account-bar"><span data-testid="signed-in-user">{me.user.username} · 超级管理员</span><div>
@@ -77,8 +79,7 @@ export function AdminWorkspace() {
     </div></div>
     {error && <p className="field-error" role="alert">{error}</p>}
     {tab === 'editor' ? <DraftWorkspace generationCost="0" /> : <>
-      <div className="form-actions"><button type="button" disabled={busy} onClick={() => void act(refreshUsers)}>刷新客户列表</button><button type="button" onClick={() => setStepUp(!stepUp)}>重新验证管理员身份</button></div>
-      {stepUp && <form className="card" onSubmit={e => { e.preventDefault(); void act(async () => { const challenge = await request<MFAChallengeResponse>('/auth/mfa/challenges', { purpose: 'STEP_UP' }); await request('/auth/mfa/step-up', { challenge_id: challenge.challenge_id, totp: code }); setCode(''); setStepUp(false); }); }}><label>管理员验证码<input required value={code} onChange={e => setCode(e.target.value)} /></label><button disabled={busy}>确认二次验证</button></form>}
+      <div className="form-actions"><button type="button" disabled={busy} onClick={() => void act(refreshUsers)}>刷新客户列表</button></div>
       <div className="admin-layout">
         <form className="card" onSubmit={e => { e.preventDefault(); void act(async () => { createKey.current ??= crypto.randomUUID(); const result = await request<CreateUserResponse>('/admin/users', { username: customer, customer_verification_ref: verification, reason }, createKey.current); setUsers(previous => [result, ...previous.filter(u => u.user.id !== result.user.id)]); setSelected(result.user.id); setSetupLink(result.setup_link); createKey.current = null; setCustomer(''); setVerification(''); setReason(''); }); }}>
           <h2>新增客户</h2><label>客户用户名<input required value={customer} disabled={busy} onChange={e => { setCustomer(e.target.value); createKey.current = null; }} /></label>

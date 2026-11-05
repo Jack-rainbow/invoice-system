@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "单据系统API契约",
-    "version": "1.6.0-device-transfer-admin",
+    "version": "1.7.0-live-preview-no2fa",
     "description": "53项业务操作：21项接入、6项部分接入、26项planned。当前development HTTPS支持管理员、初次激活/正常持钥登录客户、本人草稿持久化与免费像素水印预览；换机、正式生成、计费与文件下载仍未完成，生产拒绝启动。"
   },
   "servers": [
@@ -12303,8 +12303,10 @@
             "enum": [
               "DEVICE_REQUIRED",
               "MFA_REQUIRED",
-              "TRANSFER_REQUIRED"
-            ]
+              "TRANSFER_REQUIRED",
+              "AUTHENTICATED"
+            ],
+            "description": "AUTHENTICATED：密码验证已直接完成（管理员免 2FA 登录）。"
           },
           "context_id": {
             "$ref": "#/components/schemas/UUID"
@@ -13235,6 +13237,9 @@
               "ACTIVE",
               "REVOKED"
             ]
+          },
+          "field_boxes": {
+            "$ref": "#/components/schemas/FieldBoxMap"
           }
         },
         "required": [
@@ -14257,6 +14262,9 @@
             "items": {
               "$ref": "#/components/schemas/RenderProfileSummary"
             }
+          },
+          "field_boxes": {
+            "$ref": "#/components/schemas/FieldBoxMap"
           }
         },
         "required": [
@@ -14737,6 +14745,94 @@
           "recovery_codes"
         ],
         "description": "初始化成功时只当次展示10个一次性恢复码；数据库只保存哈希，不可通过查询或重试恢复明文。"
+      },
+      "FieldBox": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "x",
+          "y",
+          "w",
+          "h"
+        ],
+        "properties": {
+          "x": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "y": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "w": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "h": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "description": "票面字段矩形（画布比例坐标）。"
+      },
+      "FieldBoxMap": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "recipient_name": {
+            "$ref": "#/components/schemas/FieldBox"
+          },
+          "product_code": {
+            "$ref": "#/components/schemas/FieldBox"
+          },
+          "quantity": {
+            "$ref": "#/components/schemas/FieldBox"
+          },
+          "unit_code": {
+            "$ref": "#/components/schemas/FieldBox"
+          },
+          "unit_description": {
+            "$ref": "#/components/schemas/FieldBox"
+          },
+          "description": {
+            "$ref": "#/components/schemas/FieldBox"
+          },
+          "issued_at": {
+            "$ref": "#/components/schemas/FieldBox"
+          },
+          "certification_display_at": {
+            "$ref": "#/components/schemas/FieldBox"
+          },
+          "unit_price": {
+            "$ref": "#/components/schemas/FieldBox"
+          },
+          "line_amount": {
+            "$ref": "#/components/schemas/FieldBox"
+          },
+          "subtotal": {
+            "$ref": "#/components/schemas/FieldBox"
+          },
+          "tax_label": {
+            "$ref": "#/components/schemas/FieldBox"
+          },
+          "tax_amount": {
+            "$ref": "#/components/schemas/FieldBox"
+          },
+          "total": {
+            "$ref": "#/components/schemas/FieldBox"
+          },
+          "total_words": {
+            "$ref": "#/components/schemas/FieldBox"
+          },
+          "tax_detail": {
+            "$ref": "#/components/schemas/FieldBox"
+          }
+        },
+        "description": "动态字段在票面上的定位（编辑高亮用）；不含模板内容。"
       }
     },
     "parameters": {

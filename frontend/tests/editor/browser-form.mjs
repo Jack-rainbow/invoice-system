@@ -45,14 +45,14 @@ export async function verifyEditor(page, screenshots, prefix = 'editor', options
   // The same editor is mounted with and without the server preview service; the
   // button must stay disabled only when no watermarked-preview channel exists.
   if (options.preview === 'server') {
-    assert.equal(await page.getByRole('button', { name: '查看水印预览' }).isDisabled(), false);
+    assert.equal(await page.getByRole('button', { name: '刷新预览' }).isDisabled(), false);
   } else {
     // The same editor is mounted with and without the server preview service; the
   // button must stay disabled only when no watermarked-preview channel exists.
   if (options.preview === 'server') {
-    assert.equal(await page.getByRole('button', { name: '查看水印预览' }).isDisabled(), false);
+    assert.equal(await page.getByRole('button', { name: '刷新预览' }).isDisabled(), false);
   } else {
-    assert.equal(await page.getByRole('button', { name: '预览服务尚未接入' }).isDisabled(), true);
+    assert.equal(await page.getByRole('button', { name: '刷新预览' }).isDisabled(), true);
   }
   }
   await page.getByLabel('商品名称与说明').fill('测试商品');

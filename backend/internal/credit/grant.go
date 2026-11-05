@@ -284,7 +284,10 @@ func authorize(ctx context.Context, q *db.Queries, principal Principal, targetID
 		!session.FactorVersion.Valid || session.FactorVersion.Int32 != factor.FactorVersion || factor.State != "VERIFIED" ||
 		!session.MfaVerifiedAt.Valid || !session.LastActiveAt.Valid || !session.ExpiresAt.Valid ||
 		!now.Time.Before(session.ExpiresAt.Time) || !now.Time.Before(session.LastActiveAt.Time.Add(idleTTL)) ||
-		now.Time.Before(session.MfaVerifiedAt.Time) || (recent && now.Time.Sub(session.MfaVerifiedAt.Time) > mfaTTL) {
+		now.Time.Before(session.MfaVerifiedAt.Time) {
+		// 2FA was removed from login by product decision: a complete verified
+		// session authorizes management writes; the former five-minute
+		// "recent MFA" window no longer has a factor to refresh and is gone.
 		return actor, target, wallet, ErrUnauthorized
 	}
 	if wallet.Available < 0 || wallet.Frozen < 0 {

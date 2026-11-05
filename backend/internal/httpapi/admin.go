@@ -228,7 +228,12 @@ func (a *AdminAPI) login(w http.ResponseWriter, r *http.Request) {
 		a.error(w, r, e)
 		return
 	}
-	setCookie(w, preCookie, t.Reveal(), result.ExpiresAt)
+	if result.Stage == "AUTHENTICATED" {
+		// Password-only administrator login: the token is the full session.
+		setCookie(w, sessionCookie, t.Reveal(), result.ExpiresAt)
+	} else {
+		setCookie(w, preCookie, t.Reveal(), result.ExpiresAt)
+	}
 	write(w, 200, result)
 }
 func (a *AdminAPI) challenge(w http.ResponseWriter, r *http.Request) {

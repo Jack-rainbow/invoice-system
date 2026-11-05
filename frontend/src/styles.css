@@ -15,7 +15,7 @@ h3 { font-size: 17px; }
 p { line-height: 1.7; }
 .muted, .field small { color: #637085; font-size: 13px; }
 .status-pill { border-radius: 16px; background: #edf2ff; color: #3452a0; font-size: 12px; padding: 5px 10px; white-space: nowrap; }
-.editor-layout { display: grid; grid-template-columns: minmax(0, 1.16fr) minmax(0, 0.84fr); gap: 24px; align-items: start; }
+.editor-layout { display: grid; grid-template-columns: minmax(340px, 5fr) minmax(0, 9fr); gap: 24px; align-items: start; }
 .card { background: #fff; border: 1px solid #e0e6ef; border-radius: 14px; padding: 26px; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
 .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 16px; }
@@ -37,6 +37,12 @@ input:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visib
 button { border: 0; border-radius: 8px; background: #345edb; color: white; min-height: 44px; padding: 10px 22px; font-weight: 600; cursor: pointer; }
 button:disabled { background: #e8ecf3; color: #778397; cursor: not-allowed; }
 .preview-card { position: sticky; top: 24px; }
+.preview-canvas { position: relative; border-radius: 10px; padding: 28px; background-color: #f3f5f9;
+  background-image: radial-gradient(#c9d2e0 1px, transparent 1px); background-size: 18px 18px; overflow: auto; max-height: calc(100vh - 120px); }
+.preview-sheet { position: relative; background: #fff; box-shadow: 0 10px 28px rgba(20, 32, 57, .14); display: block; width: 100%; height: auto; }
+.preview-sheet img { display: block; width: 100%; height: auto; }
+.field-highlight { position: absolute; border-radius: 3px; background: rgba(167, 139, 250, .22); border: 1px dashed rgba(124, 58, 237, .65); pointer-events: none; transition: all .18s ease; }
+.preview-live-pill { position: absolute; top: 10px; right: 12px; font-size: 12px; color: #4b5563; background: rgba(255,255,255,.92); border: 1px solid #d7deea; border-radius: 999px; padding: 3px 10px; box-shadow: 0 2px 6px rgba(20,32,57,.08); }
 .preview-placeholder { min-height: 430px; padding: 60px 28px; border: 1px dashed #cdd6e5; border-radius: 9px; background: #fafbfd; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .preview-placeholder p { max-width: 270px; margin: 0; color: #637085; font-size: 14px; }
 .page-symbol { font-size: 56px; color: #a3b2ca; }

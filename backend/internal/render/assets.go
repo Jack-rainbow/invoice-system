@@ -225,3 +225,40 @@ func (a *Assets) ManifestAssets() json.RawMessage {
 	buf.WriteString("}}")
 	return json.RawMessage(buf.Bytes())
 }
+
+// Box is a field's on-page rectangle as fractions of the canvas, ready for
+// overlay positioning on a client-sized preview image.
+type Box struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+	W float64 `json:"w"`
+	H float64 `json:"h"`
+}
+
+// FieldBoxes reports every dynamic field's page rectangle in canvas
+// fractions. Baselines convert to a top edge at roughly cap height; multi-line
+// boxes span their whole line budget.
+func (a *Assets) FieldBoxes() map[string]Box {
+	t := a.Template
+	out := make(map[string]Box, len(t.Layout.Fields))
+	for name, box := range t.Layout.Fields {
+		if box == nil {
+			continue
+		}
+		lines := box.MaxLines
+		if lines < 1 {
+			lines = 1
+		}
+		height := box.Size * 1.25
+		if lines > 1 && box.LineH > 0 {
+			height = box.LineH*float64(lines-1) + box.Size*1.25
+		}
+		out[name] = Box{
+			X: box.X / float64(t.Canvas.Width),
+			Y: (box.BL - box.Size*0.78) / float64(t.Canvas.Height),
+			W: box.MaxW / float64(t.Canvas.Width),
+			H: height / float64(t.Canvas.Height),
+		}
+	}
+	return out
+}

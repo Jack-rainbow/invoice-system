@@ -472,3 +472,7 @@ func AssetsMatch(assets *render.Assets, manifest []byte) bool {
 	}
 	return true
 }
+
+// FieldBoxes exposes the ACTIVE template's field rectangles for preview-side
+// overlays; callers must not use them to infer template content.
+func (s *Service) FieldBoxes() map[string]render.Box { return s.assets.FieldBoxes() }

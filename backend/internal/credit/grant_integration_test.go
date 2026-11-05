@@ -291,7 +291,8 @@ func TestGrantAuthorizationRevocation(t *testing.T) {
 		{"old factor", "UPDATE mfa_factors SET factor_version=2 WHERE user_id=$1", "actor"},
 		{"old auth version", "UPDATE users SET auth_version=2 WHERE id=$1", "actor"},
 		{"old binding epoch", "UPDATE users SET binding_epoch=2 WHERE id=$1", "actor"},
-		{"old MFA", "UPDATE device_sessions SET mfa_verified_at=clock_timestamp()-interval '6 minutes' WHERE id=$1", "session"},
+		// Aged mfa_verified_at no longer rejects: 2FA was removed from login and
+		// the recent window with it; revoked/expired/idle cases below still do.
 		{"idle session", "UPDATE device_sessions SET last_active_at=clock_timestamp()-interval '31 minutes' WHERE id=$1", "session"},
 		{"absolute expired", "", "expired"},
 		{"disabled actor", "UPDATE users SET is_active=false WHERE id=$1", "actor"},

@@ -7,6 +7,7 @@ import (
 
 	"invoice.local/system/backend/internal/account"
 	"invoice.local/system/backend/internal/document"
+	"invoice.local/system/backend/internal/render"
 )
 
 // signedPrincipal resolves the caller and, for a USER session, verifies the
@@ -179,9 +180,16 @@ func (a *AdminAPI) listRenderProfiles(w http.ResponseWriter, r *http.Request) {
 		a.error(w, r, e)
 		return
 	}
+	// Geometry of the renderable template's field boxes, in canvas fractions:
+	// the editor uses it to highlight the edited field on the live preview.
+	var boxes map[string]render.Box
+	if a.previews != nil {
+		boxes = a.previews.FieldBoxes()
+	}
 	write(w, 200, struct {
-		Items []document.ProfileSummary `json:"items"`
-	}{items})
+		Items      []document.ProfileSummary `json:"items"`
+		FieldBoxes map[string]render.Box     `json:"field_boxes,omitempty"`
+	}{items, boxes})
 }
 
 // changeDocumentProfile adopts a new ACTIVE template as a new revision. This is
