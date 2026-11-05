@@ -51,9 +51,12 @@ type Template struct {
 		Watermark string `json:"watermark"`
 	} `json:"fonts"`
 	Layout struct {
-		Rules  [][4]float64          `json:"rules"`
-		QR     QRBlock               `json:"qr"`
-		Fields map[string]*FieldBox  `json:"fields"`
+		Rules   [][4]float64         `json:"rules"`
+		QR      QRBlock              `json:"qr"`
+		Fields  map[string]*FieldBox `json:"fields"`
+		Autofit struct {
+			MinSize float64 `json:"min_size"`
+		} `json:"autofit"`
 	} `json:"layout"`
 	Runs   []Run `json:"runs"`
 	Labels struct {
@@ -84,16 +87,16 @@ type FieldBox struct {
 
 // Run is one static text element; Parts renders mixed bold label + value.
 type Run struct {
-	Text  string     `json:"t,omitempty"`
-	Parts []RunPart  `json:"parts,omitempty"`
-	X     float64    `json:"x"`
-	BL    float64    `json:"bl"`
-	S     float64    `json:"s"`
-	Bold  bool       `json:"b,omitempty"`
-	Color string     `json:"c,omitempty"`
-	Align string     `json:"align,omitempty"`
-	LsFit float64    `json:"lsFit,omitempty"`
-	Group string     `json:"group,omitempty"`
+	Text  string    `json:"t,omitempty"`
+	Parts []RunPart `json:"parts,omitempty"`
+	X     float64   `json:"x"`
+	BL    float64   `json:"bl"`
+	S     float64   `json:"s"`
+	Bold  bool      `json:"b,omitempty"`
+	Color string    `json:"c,omitempty"`
+	Align string    `json:"align,omitempty"`
+	LsFit float64   `json:"lsFit,omitempty"`
+	Group string    `json:"group,omitempty"`
 }
 
 // RunPart is one bold-or-regular segment of a static run.

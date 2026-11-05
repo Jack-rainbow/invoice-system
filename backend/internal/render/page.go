@@ -241,15 +241,25 @@ func (a *Assets) RenderInvoice(inv Invoice) (*image.RGBA, error) {
 	// canonical finder squares. It is decorative and never encodes a claim.
 	drawDemoQR(page, t.Layout.QR, ink)
 
-	// Single-line fields refuse instead of shrinking.
+	// Single-line fields autofit like the reference tool: shrink the font to
+	// the box, never below the template's floor; past the floor they refuse.
 	putLine := func(name, text string) error {
 		box := t.Layout.Fields[name]
 		if box == nil {
 			return ErrTextDoesNotFit
 		}
+		size := box.Size
 		face := faceFor(box)
-		if measure(face, text).Ceil() > int(box.MaxW) {
-			return ErrTextDoesNotFit
+		if width := measure(face, text).Ceil(); width > int(box.MaxW) {
+			floor := t.Layout.Autofit.MinSize
+			if floor <= 0 {
+				floor = 17
+			}
+			size = box.Size * box.MaxW / float64(width)
+			if size < floor {
+				return ErrTextDoesNotFit
+			}
+			face = a.newFace(map[bool]string{true: "bold", false: "regular"}[box.Bold], size)
 		}
 		if box.Align == "r" {
 			drawRight(page, face, int(box.X+0.5), int(box.BL+0.5), ink, text)
@@ -288,9 +298,18 @@ func (a *Assets) RenderInvoice(inv Invoice) (*image.RGBA, error) {
 	putLines("description", descriptionLines)
 	putLines("total_words", wordsLines)
 	detailBox := t.Layout.Fields["tax_detail"]
+	detailSize := detailBox.Size
 	detailFace := faceFor(detailBox)
-	if measure(detailFace, taxDetail).Ceil() > int(detailBox.MaxW) {
-		return nil, ErrTextDoesNotFit
+	if width := measure(detailFace, taxDetail).Ceil(); width > int(detailBox.MaxW) {
+		floor := t.Layout.Autofit.MinSize
+		if floor <= 0 {
+			floor = 17
+		}
+		detailSize = detailBox.Size * detailBox.MaxW / float64(width)
+		if detailSize < floor {
+			return nil, ErrTextDoesNotFit
+		}
+		detailFace = a.newFace(map[bool]string{true: "bold", false: "regular"}[detailBox.Bold], detailSize)
 	}
 	drawText(page, detailFace, int(detailBox.X+0.5), int(detailBox.BL+0.5)+notesShift, ink, taxDetail)
 	if certification != "" {

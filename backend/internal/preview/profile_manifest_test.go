@@ -15,7 +15,7 @@ import (
 // is compiled Go code. These tests read the real migration so a manifest that
 // drifts from the embedded assets, the watermark style, or its own recorded
 // hash fails here instead of at the first user preview.
-const profileMigration = "../../db/migrations/014_cfdi_template.sql"
+const profileMigration = "../../db/migrations/015_cfdi_autofit.sql"
 
 var (
 	manifestLiteral = regexp.MustCompile(`'(\{"assets".*?\})'::jsonb`)

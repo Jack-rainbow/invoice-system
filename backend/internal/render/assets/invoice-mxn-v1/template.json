@@ -1,5 +1,5 @@
 {
- "template_version": "invoice-mxn-cfdi-v2",
+ "template_version": "invoice-mxn-cfdi-v3",
  "renderer_protocol": "goimage-raster/1",
  "canvas": {
   "width": 1582,
@@ -155,6 +155,9 @@
     "max_w": 700,
     "group": "notes"
    }
+  },
+  "autofit": {
+   "min_size": 17
   }
  },
  "runs": [
