@@ -59,7 +59,13 @@ try {
   // Password-only login yields the full session immediately.
   assert.equal((await api('/me')).status, 200);
   assert.equal((await api('/admin/users')).status, 200);
+  // Entry state proof: without touching the form, the default sample must
+  // already be rendered on the canvas.
+  phase = 'entry default ticket';
+  await page.getByTestId('preview-image').waitFor({ timeout: 60000 });
+  await page.screenshot({ path: resolve('output/playwright/entry-default.png'), fullPage: true });
   phase = 'create zero-credit customer';
+  await page.getByRole('button', { name: '客户管理', exact: true }).click();
   await page.getByLabel('客户用户名', { exact: true }).fill(fixture.customer);
   await page.getByLabel('核验渠道引用', { exact: true }).fill('manual-test-channel');
   await page.getByLabel('开户原因', { exact: true }).fill('authorized browser integration test');

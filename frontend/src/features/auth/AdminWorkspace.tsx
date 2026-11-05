@@ -21,7 +21,7 @@ export function AdminWorkspace() {
   const [checking, setChecking] = useState(!bootstrapToken && !setupToken);
   const [name, setName] = useState(''); const [password, setPassword] = useState('');
   const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const busyRef = useRef(false);
-  const [tab, setTab] = useState<'customers' | 'editor'>('customers');
+  const [tab, setTab] = useState<'customers' | 'editor'>('editor');
   const [users, setUsers] = useState<ManagedUser[]>([]); const [selected, setSelected] = useState('');
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [customer, setCustomer] = useState(''); const [verification, setVerification] = useState(''); const [reason, setReason] = useState('');
