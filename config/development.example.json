@@ -1,0 +1,8 @@
+{
+  "environment": "development",
+  "listen_addr": "127.0.0.1:8080",
+  "public_origin": "http://localhost:5173",
+  "database_dsn_file": "",
+  "keyring_file": "",
+  "trusted_proxy_cidrs": []
+}

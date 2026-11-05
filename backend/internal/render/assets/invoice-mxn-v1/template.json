@@ -1,0 +1,728 @@
+{
+ "template_version": "invoice-mxn-cfdi-v2",
+ "renderer_protocol": "goimage-raster/1",
+ "canvas": {
+  "width": 1582,
+  "height": 2048
+ },
+ "colors": {
+  "background": "#FFFFFF",
+  "ink": "#222325",
+  "rose": "#B08284",
+  "seal": "#4D4E50",
+  "foot": "#3A3A3A",
+  "rule": "#C9C9C9"
+ },
+ "fonts": {
+  "regular": "NotoSans-Regular.ttf",
+  "bold": "NotoSans-Bold.ttf",
+  "watermark": "WatermarkCJK.ttf"
+ },
+ "layout": {
+  "rules": [
+   [
+    84,
+    502.5,
+    1487,
+    0
+   ],
+   [
+    84,
+    625,
+    1487,
+    1
+   ],
+   [
+    270,
+    727,
+    1187,
+    0
+   ]
+  ],
+  "qr": {
+   "x": 100,
+   "y": 927,
+   "size": 231
+  },
+  "fields": {
+   "recipient_name": {
+    "x": 1061,
+    "bl": 152,
+    "size": 18,
+    "max_w": 430,
+    "line_h": 26,
+    "max_lines": 2
+   },
+   "product_code": {
+    "x": 83,
+    "bl": 535,
+    "size": 22,
+    "max_w": 122
+   },
+   "quantity": {
+    "x": 219,
+    "bl": 535,
+    "size": 22,
+    "max_w": 96
+   },
+   "unit_code": {
+    "x": 362,
+    "bl": 535,
+    "size": 22,
+    "max_w": 128
+   },
+   "unit_description": {
+    "x": 362,
+    "bl": 563,
+    "size": 22,
+    "max_w": 134,
+    "line_h": 27.5,
+    "max_lines": 2
+   },
+   "description": {
+    "x": 502,
+    "bl": 535,
+    "size": 22,
+    "max_w": 690,
+    "line_h": 28,
+    "max_lines": 2
+   },
+   "issued_at": {
+    "x": 697,
+    "bl": 373,
+    "size": 16,
+    "max_w": 320
+   },
+   "certification_display_at": {
+    "x": 84,
+    "bl": 1207,
+    "size": 14,
+    "max_w": 230
+   },
+   "unit_price": {
+    "x": 1229,
+    "bl": 535,
+    "size": 22,
+    "max_w": 100
+   },
+   "line_amount": {
+    "x": 1487,
+    "bl": 535,
+    "size": 22,
+    "max_w": 140,
+    "align": "r"
+   },
+   "subtotal": {
+    "x": 1487,
+    "bl": 658,
+    "size": 18,
+    "max_w": 140,
+    "align": "r"
+   },
+   "tax_label": {
+    "x": 1219,
+    "bl": 707,
+    "size": 18,
+    "max_w": 120
+   },
+   "tax_amount": {
+    "x": 1487,
+    "bl": 707,
+    "size": 18,
+    "max_w": 140,
+    "align": "r"
+   },
+   "total": {
+    "x": 1484,
+    "bl": 772,
+    "size": 22,
+    "max_w": 180,
+    "align": "r",
+    "bold": true
+   },
+   "total_words": {
+    "x": 767,
+    "bl": 772,
+    "size": 20,
+    "max_w": 420,
+    "line_h": 26,
+    "max_lines": 2
+   },
+   "tax_detail": {
+    "x": 503,
+    "bl": 610,
+    "size": 17,
+    "max_w": 700,
+    "group": "notes"
+   }
+  }
+ },
+ "runs": [
+  {
+   "x": 85,
+   "bl": 91,
+   "s": 18,
+   "t": "FACTURA",
+   "c": "rose",
+   "lsFit": 100
+  },
+  {
+   "x": 1342,
+   "bl": 91,
+   "s": 18,
+   "parts": [
+    {
+     "t": "FOLIO:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 1495,
+   "bl": 91,
+   "s": 18,
+   "t": "21958",
+   "align": "r"
+  },
+  {
+   "x": 450,
+   "bl": 118,
+   "s": 16,
+   "parts": [
+    {
+     "t": "Emisor:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 450,
+   "bl": 142,
+   "s": 19,
+   "t": "M Y E QUALY"
+  },
+  {
+   "x": 450,
+   "bl": 165,
+   "s": 19,
+   "t": "MQUI80305K57"
+  },
+  {
+   "x": 451,
+   "bl": 199,
+   "s": 16,
+   "t": "RIO CONSULADO 516 OFICINA 101-A TLATILCO, CP: 02860,"
+  },
+  {
+   "x": 449,
+   "bl": 224,
+   "s": 16,
+   "t": "AZCAPOTZALCO, CIUDAD DE MÉXICO, México"
+  },
+  {
+   "x": 450,
+   "bl": 250,
+   "s": 16,
+   "parts": [
+    {
+     "t": "Lugar de Expedición:",
+     "b": true
+    },
+    {
+     "t": " 02860 CIUDAD DE MEXICO"
+    }
+   ]
+  },
+  {
+   "x": 450,
+   "bl": 271,
+   "s": 16,
+   "parts": [
+    {
+     "t": "Régimen Fiscal:",
+     "b": true
+    },
+    {
+     "t": " 601 - General de Ley Personas Morales"
+    }
+   ]
+  },
+  {
+   "x": 450,
+   "bl": 299,
+   "s": 16,
+   "parts": [
+    {
+     "t": "Efecto del comprobante:",
+     "b": true
+    },
+    {
+     "t": " I - Ingreso"
+    }
+   ]
+  },
+  {
+   "x": 1062,
+   "bl": 116,
+   "s": 16,
+   "parts": [
+    {
+     "t": "Receptor:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 1062,
+   "bl": 215,
+   "s": 16,
+   "parts": [
+    {
+     "t": "Código postal:",
+     "b": true
+    },
+    {
+     "t": " 52140"
+    }
+   ]
+  },
+  {
+   "x": 1062,
+   "bl": 236,
+   "s": 16,
+   "parts": [
+    {
+     "t": "Uso del CFDI:",
+     "b": true
+    },
+    {
+     "t": " CP01 - Pagos"
+    }
+   ]
+  },
+  {
+   "x": 1063,
+   "bl": 264,
+   "s": 16,
+   "parts": [
+    {
+     "t": "Régimen Fiscal:",
+     "b": true
+    },
+    {
+     "t": " 601 - General de Ley"
+    }
+   ]
+  },
+  {
+   "x": 1064,
+   "bl": 289,
+   "s": 16,
+   "t": "Personas Morales"
+  },
+  {
+   "x": 84,
+   "bl": 349,
+   "s": 16,
+   "parts": [
+    {
+     "t": "Folio Fiscal:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 84,
+   "bl": 373,
+   "s": 16,
+   "t": "3F2504E0-4F89-41D3-9A0C-0305E82C3301"
+  },
+  {
+   "x": 697,
+   "bl": 349,
+   "s": 16,
+   "parts": [
+    {
+     "t": "Fecha / Hora de Emisión:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 1063,
+   "bl": 349,
+   "s": 16,
+   "parts": [
+    {
+     "t": "No. de Certificado Digital:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 1063,
+   "bl": 373,
+   "s": 16,
+   "t": "00001000000500000001"
+  },
+  {
+   "x": 83,
+   "bl": 409,
+   "s": 16,
+   "parts": [
+    {
+     "t": "Orden de Compra:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 84,
+   "bl": 434,
+   "s": 16,
+   "t": "615981498"
+  },
+  {
+   "x": 573,
+   "bl": 409,
+   "s": 16,
+   "parts": [
+    {
+     "t": "Exportacion:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 573,
+   "bl": 434,
+   "s": 16,
+   "t": "01 - No aplica"
+  },
+  {
+   "x": 84,
+   "bl": 483,
+   "s": 20,
+   "parts": [
+    {
+     "t": "Producto",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 220,
+   "bl": 483,
+   "s": 20,
+   "parts": [
+    {
+     "t": "Cantidad",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 362,
+   "bl": 483,
+   "s": 20,
+   "parts": [
+    {
+     "t": "Unidad",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 502,
+   "bl": 483,
+   "s": 20,
+   "parts": [
+    {
+     "t": "Concepto(s)",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 1230,
+   "bl": 483,
+   "s": 20,
+   "parts": [
+    {
+     "t": "Precio U",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 1391,
+   "bl": 483,
+   "s": 20,
+   "parts": [
+    {
+     "t": "Importe",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 504,
+   "bl": 562,
+   "s": 17,
+   "t": "02 - Con objeto de impuesto",
+   "group": "notes"
+  },
+  {
+   "x": 503,
+   "bl": 587,
+   "s": 17,
+   "t": "Traslados:",
+   "group": "notes"
+  },
+  {
+   "x": 1217,
+   "bl": 658,
+   "s": 18,
+   "t": "Subtotal:"
+  },
+  {
+   "x": 85,
+   "bl": 758,
+   "s": 17,
+   "parts": [
+    {
+     "t": "Moneda:",
+     "b": true
+    },
+    {
+     "t": " MXN -"
+    }
+   ]
+  },
+  {
+   "x": 85,
+   "bl": 786,
+   "s": 17,
+   "t": "Peso Mexicano"
+  },
+  {
+   "x": 1199,
+   "bl": 772,
+   "s": 22,
+   "parts": [
+    {
+     "t": "Total:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 84,
+   "bl": 843,
+   "s": 16,
+   "parts": [
+    {
+     "t": "Forma de Pago:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 366,
+   "bl": 843,
+   "s": 16,
+   "parts": [
+    {
+     "t": "Método de Pago:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 84,
+   "bl": 867,
+   "s": 16,
+   "t": "01 - Efectivo"
+  },
+  {
+   "x": 367,
+   "bl": 867,
+   "s": 16,
+   "t": "PUE - Pago en una sola"
+  },
+  {
+   "x": 366,
+   "bl": 892,
+   "s": 16,
+   "t": "exhibición"
+  },
+  {
+   "x": 379,
+   "bl": 922,
+   "s": 14,
+   "parts": [
+    {
+     "t": "Cadena Original del complemento de Certificación Digital del SAT",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 381,
+   "bl": 943,
+   "s": 14,
+   "t": "REVDEMO8k2fHq3LmXvB7wRtYc5NdP1sZaGj4uEoK6iHyT9xWq2VbMn3CfD8gSr5Lk7pXw1zQe4UaJ0mNs6Bv2Cd9GtHyK3fXq7WmZ5pLr1Dc8VbNa4UiO2eSg6YtK9wQx3Hf5Mj0Zr7P",
+   "c": "seal"
+  },
+  {
+   "x": 381,
+   "bl": 962,
+   "s": 14,
+   "t": "c4Vn1Bd6Gs3Ky8Tw2Qe5Xm0Lz9Hj4Nr7Pv2Bc5Wd8Gf1Mk6Qs3Yt0Zx4Ua8Ie2Oj5Nk9Lr3Vs7Wd1Gp4Xm8Zq2Nc6Bt0HyK3Fw7Qe5Jm1Dv8Gs4Xa0Lz",
+   "c": "seal"
+  },
+  {
+   "x": 381,
+   "bl": 981,
+   "s": 14,
+   "t": "P2nB5vE8mK1qW4zX7cD0fH3jL6sP9aR2uY5tI8oQ1wE4rZ7bN0kM3vC6xS9gA2dT5fJ8hL1pO4wU7yB0nE3mV6cX9sQ2aK5rZ8tI1oD4uG7yJ0bN3",
+   "c": "seal"
+  },
+  {
+   "x": 380,
+   "bl": 999,
+   "s": 14,
+   "t": "V6cX9sQ2aK5rZ8tI1oD4uG7yJ0bN3mE7wQ1zL4pX8cS2fH5jK9nR3uY6tB0eW|00001000000500000002||",
+   "c": "seal"
+  },
+  {
+   "x": 379,
+   "bl": 1022,
+   "s": 14,
+   "parts": [
+    {
+     "t": "Sello Digital del CFDI:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 381,
+   "bl": 1044,
+   "s": 14,
+   "t": "A2dT5fJ8hL1pO4wU7yB0nE3mV6cX9sQ2aK5rZ8tI1oD4uG7yJ0bN3kM7vC1xS4gP9eW2zR5uY8tB0nE3mV6cX9sQ2aK5rZ8tI1oD4uG7yJ0bN3kM7vC1xS4gP9eW2zR5uY8tB0nE",
+   "c": "seal"
+  },
+  {
+   "x": 381,
+   "bl": 1063,
+   "s": 14,
+   "t": "mV6cX9sQ2aK5rZ8tI1oD4uG7yJ0bN3kM7vC1xS4gP9eW2zR5uY8tB0nE3mV6cX9sQ2aK5rZ8tI1oD4uG7yJ0bN3kM7vC1xS4gP9eW2zR5uY8tB0nE3mV",
+   "c": "seal"
+  },
+  {
+   "x": 381,
+   "bl": 1081,
+   "s": 14,
+   "t": "Q2aK5rZ8tI1oD4uG7yJ0bN3kM7vC1xS4gP9eW2zR5uY8tB0nE3mV6cX9sQ2aK5rZ8tI1oD4uG7yJ0bN3kM7vC1xS4gP9eW2zR5uY8tB0nE3mV6cX",
+   "c": "seal"
+  },
+  {
+   "x": 379,
+   "bl": 1106,
+   "s": 14,
+   "parts": [
+    {
+     "t": "Sello Digital del SAT:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 380,
+   "bl": 1127,
+   "s": 14,
+   "t": "zR5uY8tB0nE3mV6cX9sQ2aK5rZ8tI1oD4uG7yJ0bN3kM7vC1xS4gP9eW2zR5uY8tB0nE3mV6cX9sQ2aK5rZ8tI1oD4uG7yJ0bN3kM7vC1xS4gP",
+   "c": "seal"
+  },
+  {
+   "x": 381,
+   "bl": 1146,
+   "s": 14,
+   "t": "X9sQ2aK5rZ8tI1oD4uG7yJ0bN3kM7vC1xS4gP9eW2zR5uY8tB0nE3mV6cX9sQ2aK5rZ8tI1oD4uG7yJ0bN3kM7vC1xS4gP9eW2zR5uY8tB0n",
+   "c": "seal"
+  },
+  {
+   "x": 381,
+   "bl": 1164,
+   "s": 14,
+   "t": "P7rZ0jM5fH3xQw9KtY6gSe2OiU4aNbV8cD1rLp5ZmW7qXf3KyHtG9dC2vB6sNm0JaU4eQz1wXp7kL5rSg8DfC3nMbV2qWx9TyHi6KoEu4jGaZs1PdN5cYtRw7BvXmL3qHf2k8OMEDVER",
+   "c": "seal"
+  },
+  {
+   "x": 84,
+   "bl": 1188,
+   "s": 14,
+   "parts": [
+    {
+     "t": "Fecha / Hora de Certificación:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 450,
+   "bl": 1188,
+   "s": 14,
+   "parts": [
+    {
+     "t": "Número de Serie Certificado del SAT:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 450,
+   "bl": 1207,
+   "s": 14,
+   "t": "00001000000500000002"
+  },
+  {
+   "x": 816,
+   "bl": 1188,
+   "s": 14,
+   "parts": [
+    {
+     "t": "RFC del PAC:",
+     "b": true
+    }
+   ]
+  },
+  {
+   "x": 817,
+   "bl": 1207,
+   "s": 14,
+   "t": "AAA010101AAA"
+  },
+  {
+   "x": 791,
+   "bl": 1958,
+   "s": 16,
+   "t": "DEMOSTRACIÓN · SIN VALOR FISCAL",
+   "c": "rose",
+   "align": "c"
+  },
+  {
+   "x": 790,
+   "bl": 1996,
+   "s": 19,
+   "t": "Este documento es una representación impresa de un CFDI - Página 1 de 1",
+   "c": "foot",
+   "align": "c"
+  }
+ ],
+ "labels": {
+  "tax": "IVA 16%",
+  "footer": "DEMOSTRACIÓN · SIN VALOR FISCAL"
+ }
+}

@@ -1,0 +1,21 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*.local
+*.pem
+*.key
+*.crt
+.runtime/
+.superpowers/
+bin/
+test-results/
+playwright-report/
+*.test
+*.log
+
+# Local demo packages, rendered samples and editor state stay out of git.
+output/
+.workbuddy/
+.DS_Store
+*.tsbuildinfo

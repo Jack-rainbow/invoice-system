@@ -1,0 +1,8 @@
+{
+  "environment": "production",
+  "listen_addr": "0.0.0.0:8080",
+  "public_origin": "https://invoice.example.invalid",
+  "database_dsn_file": "/run/secrets/invoice_database_dsn",
+  "keyring_file": "/run/secrets/invoice_keyring",
+  "trusted_proxy_cidrs": ["127.0.0.1/32", "::1/128"]
+}

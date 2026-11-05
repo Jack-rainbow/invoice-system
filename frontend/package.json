@@ -1,0 +1,31 @@
+{
+  "name": "invoice-system-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "typecheck:device": "tsc --project tsconfig.device.json --noEmit",
+    "typecheck:editor": "tsc --project tsconfig.editor.json --noEmit",
+    "test": "node --test tests/device/*.test.mjs tests/api/*.test.mjs tests/editor/*.test.mjs",
+    "test:browser": "node tests/device/browser-persistence.mjs",
+    "test:interop": "node tests/device/export-interop.mjs"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "playwright-core": "1.62.1",
+    "typescript": "5.9.3",
+    "vite": "8.3.4"
+  }
+}
